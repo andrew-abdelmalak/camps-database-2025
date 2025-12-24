@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>قاعدة بيانات بيوت المعسكرات - لجنة معسكرات ٢٠٢٥</title>
+    <style>
+        :root { --primary:#1a5f7a; --secondary:#159895; --accent:#57c5b6; --success:#198754; --warning:#ffc107; --danger:#dc3545; }
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:'Segoe UI',Tahoma,Arial,sans-serif; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); min-height:100vh; padding:20px; }
+        .container { max-width:1400px; margin:0 auto; }
+        header { background:rgba(255,255,255,0.95); border-radius:16px; padding:24px; margin-bottom:24px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.1); }
+        h1 { color:var(--primary); margin-bottom:8px; font-size:1.8em; }
+        .subtitle { color:#666; font-size:1em; }
+        .last-updated { color:var(--secondary); font-size:0.85em; margin-top:8px; }
+        .stats { display:flex; justify-content:center; gap:24px; margin-top:16px; flex-wrap:wrap; }
+        .stat { background:var(--accent); color:white; padding:8px 16px; border-radius:20px; font-size:0.9em; }
+        .filters { background:rgba(255,255,255,0.95); border-radius:12px; padding:16px; margin-bottom:20px; display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+        .filters input, .filters select { padding:10px 14px; border:2px solid #ddd; border-radius:8px; font-size:14px; outline:none; }
+        .filters input:focus, .filters select:focus { border-color:var(--secondary); }
+        .filters input { flex:1; min-width:200px; }
+        .venue-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(380px,1fr)); gap:20px; }
+        .venue-card { background:white; border-radius:16px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.1); transition:transform 0.2s; }
+        .venue-card:hover { transform:translateY(-4px); }
+        .venue-header { padding:16px; color:white; }
+        .venue-name { font-size:1.1em; font-weight:bold; }
+        .venue-status { font-size:0.75em; padding:4px 10px; border-radius:12px; background:rgba(255,255,255,0.25); float:left; }
+        .venue-body { padding:16px; }
+        .venue-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee; font-size:0.9em; }
+        .venue-row:last-child { border-bottom:none; }
+        .venue-label { color:#666; min-width:100px; }
+        .venue-value { font-weight:500; color:#212529; text-align:left; flex:1; }
+        .venue-value a { color:var(--secondary); text-decoration:none; }
+        .price-tag { background:var(--warning); color:#212529; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:0.85em; }
+        .amenities { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+        .amenity { background:#e9ecef; padding:4px 10px; border-radius:12px; font-size:0.8em; }
+        .notes { background:#fff3cd; padding:12px; border-radius:8px; margin-top:12px; font-size:0.85em; color:#856404; }
+        .notes.danger { background:#f8d7da; color:#721c24; }
+        .notes.success { background:#d4edda; color:#155724; }
+        .details { display:none; background:#f8f9fa; padding:12px; border-radius:8px; margin-top:12px; font-size:0.85em; }
+        .details.show { display:block; }
+        .details-toggle { background:var(--secondary); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:0.85em; margin-top:8px; }
+        .gallery { display:none; margin-top:12px; }
+        .gallery.show { display:block; }
+        .gallery-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:8px; }
+        .gallery-thumb { width:100%; height:80px; object-fit:cover; border-radius:4px; cursor:pointer; transition:transform 0.2s; }
+        .gallery-thumb:hover { transform:scale(1.05); }
+        .loc-obour { background:linear-gradient(135deg,#667eea,#764ba2); }
+        .loc-natroun { background:linear-gradient(135deg,#f093fb,#f5576c); }
+        .loc-abutalat { background:linear-gradient(135deg,#4facfe,#00f2fe); }
+        .loc-fayed { background:linear-gradient(135deg,#43e97b,#38f9d7); }
+        .loc-shorouk { background:linear-gradient(135deg,#fa709a,#fee140); }
+        .loc-suez { background:linear-gradient(135deg,#ff9a9e,#fad0c4); }
+        .loc-sadat { background:linear-gradient(135deg,#a18cd1,#fbc2eb); }
+        .loc-other { background:linear-gradient(135deg,#a8edea,#fed6e3); }
+        .booked .venue-header { background:linear-gradient(135deg,#11998e,#38ef7d) !important; }
+        .booked { border:3px solid #11998e; }
+        .rejected .venue-header { background:linear-gradient(135deg,#636e72,#b2bec3) !important; opacity:0.8; }
+        footer { text-align:center; padding:24px; color:white; font-size:0.9em; }
+        .modal { display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.9); }
+        .modal.show { display:flex; justify-content:center; align-items:center; }
+        .modal img { max-width:90%; max-height:90%; border-radius:8px; }
+        .modal-close { position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer; }
+        @media (max-width:600px) { .venue-grid { grid-template-columns:1fr; } .filters { flex-direction:column; } .filters input, .filters select { width:100%; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🏕️ قاعدة بيانات بيوت المعسكرات</h1>
+        <p class="subtitle">كنيسة العذراء ومارجرجس بمدينتي - لجنة معسكرات ٢٠٢٥</p>
+        <p class="last-updated">آخر تحديث: ٢٤ ديسمبر ٢٠٢٤</p>
+        <div class="stats">
+            <span class="stat">📍 إجمالي البيوت: <span id="totalCount">45</span></span>
+            <span class="stat">✅ تمت الزيارة: <span id="visitedCount">5</span></span>
+            <span class="stat">🎯 المختار ٢٠٢٥: بيت العذراء ويوسف النجار</span>
+        </div>
+    </header>
+    
+    <div class="filters">
+        <input type="text" id="searchInput" placeholder="🔍 بحث بالاسم أو الموقع أو أي نص..." onkeyup="filterVenues()">
+        <select id="statusFilter" onchange="filterVenues()">
+            <option value="">كل الحالات</option>
+            <option value="booked">✅ محجوز 2025</option>
+            <option value="visited">👁️ تمت الزيارة</option>
+            <option value="available">📋 متاح</option>
+            <option value="rejected">❌ مرفوض/غير متاح</option>
+        </select>
+    </div>
+
+    <div class="venue-grid" id="venueGrid">
+
+        <div class="venue-card booked" data-location="طريق السويس - خلف دير بطمس" data-status="booked">
+            <div class="venue-header loc-suez">
+                <span class="venue-name">⭐ بيت السيدة العذراء ويوسف النجار</span>
+                <span class="venue-status">✓ محجوز ٢٠٢٥</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01223716388">01223716388</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://g.co/kgs/Xn9w4VL" target="_blank">خريطة</a></span></div>
+                <div class="venue-row"><span class="venue-label">سعر الليلة</span><span class="venue-value"><span class="price-tag">٦٠ جنيه/فرد</span></span></div>
+                <div class="amenities"><span class="amenity">🏕️ أرض معسكر</span><span class="amenity">🍳 مطبخ</span><span class="amenity">🚿 حمامات</span><span class="amenity">⛪ كنيسة جديدة</span><span class="amenity">🛏️ غرف</span></div>
+                <div class="notes success">✅ تم الحجز 15/2/2025. البيت مقفول علينا. زيارات: 31/1، 5/4، 3/5/2025</div>
+                <button class="details-toggle" onclick="toggleDetails(this)">📋 تفاصيل وصور</button>
+                <div class="details">دفع وديعة شهر في 15/2/2025. مواعيد المعسكرات: 9-11، 11-13، 17-19، 24-26 يوليو، 31/7-2/8</div>
+                <div class="gallery"><div class="gallery-grid"><img class="gallery-thumb" src="images/00000584-PHOTO-2025-01-31-12-55-04.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000585-PHOTO-2025-01-31-12-55-04.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000588-PHOTO-2025-01-31-12-55-05.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000590-PHOTO-2025-01-31-12-55-05.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000591-PHOTO-2025-01-31-12-55-05.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000780-PHOTO-2025-02-15-18-03-28.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000816-PHOTO-2025-04-05-14-43-12.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000817-PHOTO-2025-04-05-14-43-12.jpg" onclick="openModal(this.src)" alt="صورة"></div></div>
+            </div>
+        </div>
+        <div class="venue-card available" data-location="العبور" data-status="available">
+            <div class="venue-header loc-obour">
+                <span class="venue-name">بيت ايل</span>
+                <span class="venue-status">العبور</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:022156403">022156403</a> / <a href="tel:01212333360">01212333360</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/bqUwRP8v69MBB8sd/" target="_blank">Facebook</a></span></div>
+                <div class="venue-row"><span class="venue-label">سعر الليلة</span><span class="venue-value"><span class="price-tag">٣٢٠ جنيه</span></span></div><div class="venue-row"><span class="venue-label">Day Use</span><span class="venue-value"><span class="price-tag">١٠٠ جنيه</span></span></div>
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="العبور" data-status="available">
+            <div class="venue-header loc-obour">
+                <span class="venue-name">دار الينبوع</span>
+                <span class="venue-status">العبور</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01274899155">01274899155</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/QtrTZz7YF3LyGMWe/" target="_blank">Facebook</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="العبور" data-status="available">
+            <div class="venue-header loc-obour">
+                <span class="venue-name">بيت جبل الزيتون</span>
+                <span class="venue-status">العبور</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01226699502">01226699502</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://g.co/kgs/xq3qKSQ" target="_blank">خريطة</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card visited" data-location="العبور" data-status="visited">
+            <div class="venue-header loc-obour">
+                <span class="venue-name">فيلا بارادايس (فري بيرد)</span>
+                <span class="venue-status">✓ زيارة 25/01/2025</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01222719622">سامح: 01222719622</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/uXYnCy6CKRzhDxqk/" target="_blank">Facebook</a></span></div>
+                
+                <div class="amenities"><span class="amenity">🏕️ نجيلة</span></div>
+                <div class="notes ">تمت الزيارة. فيلا تبع مزرعة البطل - كلها نجيلة وصغيرة.</div>
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="العبور" data-status="available">
+            <div class="venue-header loc-obour">
+                <span class="venue-name">بيت مارمرقس شبرا</span>
+                <span class="venue-status">العبور</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:022050550">022050550</a> / <a href="tel:02202577">02202577</a> / <a href="tel:01001525291">01001525291</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/vJ4KdswQhWbGShFy/" target="_blank">Facebook</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card visited" data-location="العبور" data-status="visited">
+            <div class="venue-header loc-obour">
+                <span class="venue-name">مزرعة البطل</span>
+                <span class="venue-status">✓ زيارة 25/01/2025</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01271880404">01271880404</a> / <a href="tel:01228377877">01228377877</a> / <a href="tel:022406857">022406857</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/batalfarm" target="_blank">Facebook</a> | <a href="https://maps.google.com/?q=30.180628,31.546387" target="_blank">خريطة</a></span></div>
+                <div class="venue-row"><span class="venue-label">سعر الليلة</span><span class="venue-value"><span class="price-tag">١٥٠ جنيه شامل</span></span></div>
+                <div class="amenities"><span class="amenity">🏕️ أرضين معسكر</span><span class="amenity">🍳 مطبخ</span><span class="amenity">⚽ ملاعب</span><span class="amenity">🏛️ قاعات</span></div>
+                <div class="notes ">تمت الزيارة. فيه أرضين (كبيرة+صغيرة). سعر أحسن من مزرعة الأحلام.</div>
+                <button class="details-toggle" onclick="toggleDetails(this)">📋 تفاصيل وصور</button>
+                <div class="details">VCF: مزرعة البطل بالعبور</div>
+                <div class="gallery"><div class="gallery-grid"><img class="gallery-thumb" src="images/00000176-PHOTO-2024-11-08-16-33-07.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000177-PHOTO-2024-11-08-16-33-16.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000178-PHOTO-2024-11-08-16-33-16.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000179-PHOTO-2024-11-08-16-33-16.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000180-PHOTO-2024-11-08-16-33-16.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000181-PHOTO-2024-11-08-16-33-17.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000182-PHOTO-2024-11-08-16-33-17.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000183-PHOTO-2024-11-08-16-33-17.jpg" onclick="openModal(this.src)" alt="صورة"></div></div>
+            </div>
+        </div>
+        <div class="venue-card rejected" data-location="العبور" data-status="rejected">
+            <div class="venue-header loc-obour">
+                <span class="venue-name">بيت الملكة</span>
+                <span class="venue-status">❌ مرفوض</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01228806633">01228806633</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/profile.php?id=100057503557049" target="_blank">Facebook</a></span></div>
+                
+                
+                <div class="notes danger">❌ مفيش أرض تخييم. كان كاتب معسكرات كشفية لكن اتضح لا.</div>
+                <button class="details-toggle" onclick="toggleDetails(this)">📋 تفاصيل وصور</button>
+                <div class="details">تم التواصل 22/1/2025</div>
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="العبور" data-status="available">
+            <div class="venue-header loc-obour">
+                <span class="venue-name">فيلا البشارة</span>
+                <span class="venue-status">العبور</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01271170120">01271170120</a></span></div>
+                
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="العبور" data-status="available">
+            <div class="venue-header loc-obour">
+                <span class="venue-name">بيت الواحة</span>
+                <span class="venue-status">العبور</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01206645317">01206645317</a></span></div>
+                
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="العبور" data-status="available">
+            <div class="venue-header loc-obour">
+                <span class="venue-name">بيت فاونتن جيت</span>
+                <span class="venue-status">العبور</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01225970971">بولس: 01225970971</a> / <a href="tel:01229555678">بولس: 01229555678</a> / <a href="tel:01273606106">سارة: 01273606106</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://goo.gl/7EoVgZ" target="_blank">الصفحة</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="وادي النطرون" data-status="available">
+            <div class="venue-header loc-natroun">
+                <span class="venue-name">سمعان الخراز</span>
+                <span class="venue-status">وادي النطرون</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01222722893">01222722893</a> / <a href="tel:01022399299">01022399299</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/xZsfWHGJhCj9Pe6E/" target="_blank">Facebook</a></span></div>
+                <div class="venue-row"><span class="venue-label">سعر الليلة</span><span class="venue-value"><span class="price-tag">٤٥٠ جنيه</span></span></div><div class="venue-row"><span class="venue-label">Day Use</span><span class="venue-value"><span class="price-tag">٢٠٠ جنيه</span></span></div>
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="وادي النطرون" data-status="available">
+            <div class="venue-header loc-natroun">
+                <span class="venue-name">بيت الوادي</span>
+                <span class="venue-status">وادي النطرون</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01289673151">01289673151</a> / <a href="tel:01228193523">01228193523</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/kdecwadi" target="_blank">Facebook</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="وادي النطرون" data-status="available">
+            <div class="venue-header loc-natroun">
+                <span class="venue-name">الواحة فكر&واعمل</span>
+                <span class="venue-status">وادي النطرون</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01229463060">للمؤتمرات: 01229463060</a> / <a href="tel:01273395268">للرحلات: 01273395268</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/Kp7zqEK4P2uDpgtS/" target="_blank">Facebook</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="وادي النطرون" data-status="available">
+            <div class="venue-header loc-natroun">
+                <span class="venue-name">بيت آدم (عزبة آدم)</span>
+                <span class="venue-status">وادي النطرون</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:022406857">022406857</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://g.co/kgs/jPy8D9w" target="_blank">خريطة</a></span></div>
+                <div class="venue-row"><span class="venue-label">سعر الليلة</span><span class="venue-value"><span class="price-tag">١٥٠ خيام / ٢٠٠ غرف</span></span></div>
+                <div class="amenities"><span class="amenity">🏕️ مساحة كبيرة للمعسكرات</span><span class="amenity">🍳 مطبخ ٧٥٠ج/يوم</span></div>
+                <div class="notes ">أسعار الشتاء - الصيف +٥٠ جنيه. مش هيقفل البيت علينا.</div>
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="أبو تلات" data-status="available">
+            <div class="venue-header loc-abutalat">
+                <span class="venue-name">بيت مارمرقس</span>
+                <span class="venue-status">أبو تلات</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:024855093">024855093</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/KueUpoTwynKBZD2W/" target="_blank">Facebook</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="أبو تلات" data-status="available">
+            <div class="venue-header loc-abutalat">
+                <span class="venue-name">القديسة فيرينا</span>
+                <span class="venue-status">أبو تلات</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:026334433">026334433</a> / <a href="tel:026342538">026342538</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://g.co/kgs/nBjD2Jq" target="_blank">خريطة</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="أبو تلات" data-status="available">
+            <div class="venue-header loc-abutalat">
+                <span class="venue-name">بيت القديسة مارينا</span>
+                <span class="venue-status">أبو تلات</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01222178170">01222178170</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/sqnAjkUKxSf9M1p7/" target="_blank">Facebook</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="فايد" data-status="available">
+            <div class="venue-header loc-fayed">
+                <span class="venue-name">بيت لورا</span>
+                <span class="venue-status">فايد</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01006545025">01006545025</a> / <a href="tel:0643900305">0643900305</a></span></div>
+                
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="فايد" data-status="available">
+            <div class="venue-header loc-fayed">
+                <span class="venue-name">بيت فيلو</span>
+                <span class="venue-status">فايد</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01202248999">01202248999</a> / <a href="tel:01270154444">01270154444</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/p/L2a27vWzobFfsRzw/" target="_blank">Facebook</a></span></div>
+                
+                <div class="amenities"><span class="amenity">🌊 على البحر</span></div>
+                <div class="notes ">على البحر - الخيم هتبقى على البحر. من الصور شكله خطير.</div>
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="فايد" data-status="available">
+            <div class="venue-header loc-fayed">
+                <span class="venue-name">فيلا الشهيد</span>
+                <span class="venue-status">فايد</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01228201107">01228201107</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/UCEz1gnPBv676ZyQ/" target="_blank">Facebook</a></span></div>
+                <div class="venue-row"><span class="venue-label">Day Use</span><span class="venue-value"><span class="price-tag">١٨٠ جنيه</span></span></div>
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="الشروق" data-status="available">
+            <div class="venue-header loc-shorouk">
+                <span class="venue-name">بيت الفخاري</span>
+                <span class="venue-status">الشروق</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01223184706">مهندس خليل: 01223184706</a> / <a href="tel:01558600916">01558600916</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/profile.php?id=100064404803880" target="_blank">Facebook</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="الشروق" data-status="available">
+            <div class="venue-header loc-shorouk">
+                <span class="venue-name">بيت ماري لاند</span>
+                <span class="venue-status">الشروق</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01009000673">01009000673</a> / <a href="tel:01280999395">01280999395</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://g.co/kgs/XtrmRhB" target="_blank">خريطة</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="سيدي كرير" data-status="available">
+            <div class="venue-header loc-other">
+                <span class="venue-name">بيت أبونا يوسف أسعد</span>
+                <span class="venue-status">سيدي كرير</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01227231479">01227231479</a> / <a href="tel:01224663289">01224663289</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/KueUpoTwynKBZD2W/" target="_blank">Facebook</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="سيدي كرير" data-status="available">
+            <div class="venue-header loc-other">
+                <span class="venue-name">بيت أبو سيفين</span>
+                <span class="venue-status">سيدي كرير</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01223120986">01223120986</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://maps.app.goo.gl/hAeYh1UYtdJnpep99" target="_blank">خريطة</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="العلمين" data-status="available">
+            <div class="venue-header loc-other">
+                <span class="venue-name">بيت الملاك بجبل الزيتون</span>
+                <span class="venue-status">العلمين</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01273452322">01273452322</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/groups/503217210335586/" target="_blank">Facebook</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="كينج مريوط" data-status="available">
+            <div class="venue-header loc-other">
+                <span class="venue-name">بيت مارجرجس سبورتنج</span>
+                <span class="venue-status">كينج مريوط</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01227392156">وديع: 01227392156</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://coptictourguide.com/ar/ads/5861a8453c53c/" target="_blank">الصفحة</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="مدينة السادات" data-status="available">
+            <div class="venue-header loc-sadat">
+                <span class="venue-name">بيت الكرمة (دير كرمة الرسل)</span>
+                <span class="venue-status">مدينة السادات</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:0129194667">إبراهيم: 0129194667</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/p/1AiL17R3TJ/" target="_blank">Facebook</a></span></div>
+                <div class="venue-row"><span class="venue-label">سعر الليلة</span><span class="venue-value"><span class="price-tag">٧٥ جنيه للغرف</span></span></div><div class="venue-row"><span class="venue-label">Day Use</span><span class="venue-value"><span class="price-tag">٤٠ جنيه للأرض</span></span></div>
+                <div class="amenities"><span class="amenity">🏕️ أرض معسكر</span><span class="amenity">🍳 مطبخ ٥٠٠ج شامل الغاز</span><span class="amenity">🏊 حمام سباحة</span></div>
+                <div class="notes ">البيت هيتقفل علينا ماعدا حمام السباحة. Location أقرب من وادي النطرون.</div>
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="بورفؤاد" data-status="available">
+            <div class="venue-header loc-other">
+                <span class="venue-name">بيت مارجرجس</span>
+                <span class="venue-status">بورفؤاد</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:663457075">663457075</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/9NCjCAVFfzPL28ph/" target="_blank">Facebook</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="راس سدر" data-status="available">
+            <div class="venue-header loc-other">
+                <span class="venue-name">قرية ماربنا</span>
+                <span class="venue-status">راس سدر</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01222769970">تاسوني مريم: 01222769970</a></span></div>
+                
+                
+                <div class="amenities"><span class="amenity">🌊 بحر</span><span class="amenity">🏊 بيسين</span></div>
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="المقطم" data-status="available">
+            <div class="venue-header loc-other">
+                <span class="venue-name">بيت جمعية السامري الصالح</span>
+                <span class="venue-status">المقطم</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01288800295">01288800295</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/Z9GxKQhHYp1qD1Mp/" target="_blank">Facebook</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="الإسماعيلية" data-status="available">
+            <div class="venue-header loc-suez">
+                <span class="venue-name">مبيت باراديسوس آفا بافلي</span>
+                <span class="venue-status">الإسماعيلية</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01203530370">01203530370</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/v8qDctyDS1xnXWar/" target="_blank">Facebook</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="السخنة" data-status="available">
+            <div class="venue-header loc-other">
+                <span class="venue-name">فيلا الملاك (ستيلا دي ماري)</span>
+                <span class="venue-status">السخنة</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01211150393">01211150393</a> / <a href="tel:01001525291">01001525291</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/share/MC9ZB6ik252aboLE/" target="_blank">Facebook</a></span></div>
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="الريف الأوروبي" data-status="available">
+            <div class="venue-header loc-other">
+                <span class="venue-name">ريف كاراس</span>
+                <span class="venue-status">الريف الأوروبي</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01288150157">01288150157</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/reefkaras" target="_blank">Facebook</a></span></div>
+                <div class="venue-row"><span class="venue-label">سعر الليلة</span><span class="venue-value"><span class="price-tag">١٧٥ جنيه</span></span></div><div class="venue-row"><span class="venue-label">Day Use</span><span class="venue-value"><span class="price-tag">٢٨٠-٣٠٠ جنيه</span></span></div>
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="الريف الأوروبي" data-status="available">
+            <div class="venue-header loc-other">
+                <span class="venue-name">بيت الشهيد</span>
+                <span class="venue-status">الريف الأوروبي</span>
+            </div>
+            <div class="venue-body">
+                
+                
+                
+                
+                
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="وادي النطرون" data-status="available">
+            <div class="venue-header loc-natroun">
+                <span class="venue-name">سفينة النجاة</span>
+                <span class="venue-status">وادي النطرون</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01211150393">إبرام سليم: 01211150393</a></span></div>
+                
+                
+                <div class="amenities"><span class="amenity">⛪ كنيسة جميلة</span><span class="amenity">🏛️ قاعات</span><span class="amenity">⛱️ برجولات</span><span class="amenity">⚽ ملعب كرة</span><span class="amenity">🏕️ أرض رملية للكشافة</span><span class="amenity">🍳 مطبخ + شواية</span></div>
+                <div class="notes ">بيت جديد - 500م من دير أنبا بيشوي. 36 سرير (6 غرف).</div>
+                <button class="details-toggle" onclick="toggleDetails(this)">📋 تفاصيل وصور</button>
+                <div class="details">تم الإعلان 28/1/2025</div>
+                <div class="gallery"><div class="gallery-grid"><img class="gallery-thumb" src="images/00000496-PHOTO-2025-01-28-06-18-59.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000497-PHOTO-2025-01-28-06-19-00.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000498-PHOTO-2025-01-28-06-19-00.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000499-PHOTO-2025-01-28-06-19-00.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000500-PHOTO-2025-01-28-06-19-00.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000501-PHOTO-2025-01-28-06-19-01.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000502-PHOTO-2025-01-28-06-19-01.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000503-PHOTO-2025-01-28-06-19-01.jpg" onclick="openModal(this.src)" alt="صورة"></div></div>
+            </div>
+        </div>
+        <div class="venue-card available" data-location="غير محدد" data-status="available">
+            <div class="venue-header loc-other">
+                <span class="venue-name">واحة الصديق</span>
+                <span class="venue-status">غير محدد</span>
+            </div>
+            <div class="venue-body">
+                
+                
+                <div class="venue-row"><span class="venue-label">سعر الليلة</span><span class="venue-value"><span class="price-tag">١٠٠ج داخل / ٨٠ج خيمة</span></span></div>
+                <div class="amenities"><span class="amenity">🍳 مطبخ مجهز</span><span class="amenity">🔥 شواية</span><span class="amenity">⚽ ملعب كرة</span><span class="amenity">⛱️ برجولا كبيرة</span><span class="amenity">🏕️ أرض تخييم</span></div>
+                <div class="notes ">شامل مطبخ مجهز وشواية وملعب كرة وبرجولا.</div>
+                <button class="details-toggle" onclick="toggleDetails(this)">📋 تفاصيل وصور</button>
+                <div class="details">بيانات 4/11/2024</div>
+                <div class="gallery"><div class="gallery-grid"><img class="gallery-thumb" src="images/00000011-PHOTO-2024-11-04-15-21-38.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000012-PHOTO-2024-11-04-15-21-39.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000013-PHOTO-2024-11-04-15-21-39.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000014-PHOTO-2024-11-04-15-21-40.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000015-PHOTO-2024-11-04-15-21-40.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000016-PHOTO-2024-11-04-15-21-40.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000017-PHOTO-2024-11-04-15-21-41.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000018-PHOTO-2024-11-04-15-21-41.jpg" onclick="openModal(this.src)" alt="صورة"></div></div>
+            </div>
+        </div>
+        <div class="venue-card available" data-location="الفيوم" data-status="available">
+            <div class="venue-header loc-other">
+                <span class="venue-name">أرض موسى</span>
+                <span class="venue-status">الفيوم</span>
+            </div>
+            <div class="venue-body">
+                
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://www.facebook.com/100088900820728/posts/130951656544861/" target="_blank">Facebook</a> | <a href="https://maps.app.goo.gl/vD2QsLVF3vDQLmBu9" target="_blank">خريطة</a></span></div>
+                <div class="venue-row"><span class="venue-label">سعر الليلة</span><span class="venue-value"><span class="price-tag">١٠٠ جنيه/فرد</span></span></div>
+                <div class="amenities"><span class="amenity">🏕️ أرض معسكرات فقط</span></div>
+                <div class="notes ">4 فدان (~16,000م²) - سعة حتى 4000 فرد. الخيم تبعنا. مفيش شيف.</div>
+                <button class="details-toggle" onclick="toggleDetails(this)">📋 تفاصيل وصور</button>
+                <div class="details">أرض معسكرات فقط - الأكل تبعنا</div>
+                <div class="gallery"><div class="gallery-grid"><img class="gallery-thumb" src="images/00000041-PHOTO-2024-11-04-15-25-39.jpg" onclick="openModal(this.src)" alt="صورة"></div></div>
+            </div>
+        </div>
+        <div class="venue-card rejected" data-location="العبور" data-status="rejected">
+            <div class="venue-header loc-obour">
+                <span class="venue-name">تيجي لاند (Fun Valley)</span>
+                <span class="venue-status">❌ مرفوض</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01220204620">01220204620</a></span></div>
+                
+                <div class="venue-row"><span class="venue-label">سعر الليلة</span><span class="venue-value"><span class="price-tag">٢٠٠ جنيه شامل</span></span></div>
+                <div class="amenities"><span class="amenity">🏕️ أرض حلوة وكبيرة</span><span class="amenity">⛱️ برجولات كتير</span><span class="amenity">🏛️ قاعات</span></div>
+                <div class="notes danger">❌ كل حاجة تحفة لكن محجوز كل الـ Weekends في يوليو 2025.</div>
+                
+                
+                
+            </div>
+        </div>
+        <div class="venue-card visited" data-location="طريق السويس" data-status="visited">
+            <div class="venue-header loc-suez">
+                <span class="venue-name">سان جورج (هليوبوليس الجديدة)</span>
+                <span class="venue-status">✓ زيارة 31/01/2025</span>
+            </div>
+            <div class="venue-body">
+                <div class="venue-row"><span class="venue-label">التليفون</span><span class="venue-value"><a href="tel:01227231479">باسم ماهر: 01227231479</a></span></div>
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://maps.app.goo.gl/txPgEPUB6XHpCoaj8" target="_blank">خريطة</a></span></div>
+                <div class="venue-row"><span class="venue-label">سعر الليلة</span><span class="venue-value"><span class="price-tag">٦٠ جنيه/فرد</span></span></div>
+                <div class="amenities"><span class="amenity">🏕️ أرض معسكر حلوة</span><span class="amenity">🏛️ قاعات</span><span class="amenity">🍳 مطبخ</span></div>
+                <div class="notes ">تمت الزيارة. الأرض حلوة. أسعار حلوة. الراجل مش بيرد كتير.</div>
+                <button class="details-toggle" onclick="toggleDetails(this)">📋 تفاصيل وصور</button>
+                <div class="details">VCF: Basem Maher San George</div>
+                <div class="gallery"><div class="gallery-grid"><img class="gallery-thumb" src="images/00000569-PHOTO-2025-01-31-12-21-09.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000572-PHOTO-2025-01-31-12-23-27.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000573-PHOTO-2025-01-31-12-23-31.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000574-PHOTO-2025-01-31-12-23-36.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000575-PHOTO-2025-01-31-12-23-49.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000578-PHOTO-2025-01-31-12-26-39.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000579-PHOTO-2025-01-31-12-26-39.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000580-PHOTO-2025-01-31-12-26-39.jpg" onclick="openModal(this.src)" alt="صورة"></div></div>
+            </div>
+        </div>
+        <div class="venue-card visited" data-location="العبور" data-status="visited">
+            <div class="venue-header loc-obour">
+                <span class="venue-name">مزرعة الأحلام</span>
+                <span class="venue-status">✓ زيارة 08/11/2024</span>
+            </div>
+            <div class="venue-body">
+                
+                
+                
+                <div class="amenities"><span class="amenity">🏕️ أرض معسكر</span></div>
+                <div class="notes ">حلو بس غالي. فيها أرض معسكر لكن مفيهاش برجولا.</div>
+                <button class="details-toggle" onclick="toggleDetails(this)">📋 تفاصيل وصور</button>
+                
+                <div class="gallery"><div class="gallery-grid"><img class="gallery-thumb" src="images/00000146-PHOTO-2024-11-08-16-30-54.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000147-PHOTO-2024-11-08-16-30-57.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000148-PHOTO-2024-11-08-16-30-57.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000149-PHOTO-2024-11-08-16-31-00.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000150-PHOTO-2024-11-08-16-31-01.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000151-PHOTO-2024-11-08-16-31-05.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000152-PHOTO-2024-11-08-16-31-05.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000153-PHOTO-2024-11-08-16-31-05.jpg" onclick="openModal(this.src)" alt="صورة"></div></div>
+            </div>
+        </div>
+        <div class="venue-card rejected" data-location="الشروق" data-status="rejected">
+            <div class="venue-header loc-shorouk">
+                <span class="venue-name">بيت الملاك شيراتون</span>
+                <span class="venue-status">❌ مرفوض</span>
+            </div>
+            <div class="venue-body">
+                
+                
+                
+                
+                <div class="notes danger">❌ غير مناسب.</div>
+                <button class="details-toggle" onclick="toggleDetails(this)">📋 تفاصيل وصور</button>
+                
+                <div class="gallery"><div class="gallery-grid"><img class="gallery-thumb" src="images/00000122-PHOTO-2024-11-08-16-29-07.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000123-PHOTO-2024-11-08-16-29-14.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000124-PHOTO-2024-11-08-16-29-14.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000125-PHOTO-2024-11-08-16-29-15.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000126-PHOTO-2024-11-08-16-29-21.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000127-PHOTO-2024-11-08-16-29-21.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000128-PHOTO-2024-11-08-16-29-23.jpg" onclick="openModal(this.src)" alt="صورة"></div></div>
+            </div>
+        </div>
+        <div class="venue-card visited" data-location="الشروق" data-status="visited">
+            <div class="venue-header loc-shorouk">
+                <span class="venue-name">مزرعة الصخرة</span>
+                <span class="venue-status">✓ زيارة 29/11/2024</span>
+            </div>
+            <div class="venue-body">
+                
+                <div class="venue-row"><span class="venue-label">اللينكات</span><span class="venue-value"><a href="https://maps.google.com/?q=30.317089,31.464100" target="_blank">خريطة</a></span></div>
+                
+                <div class="amenities"><span class="amenity">🏕️ أرض كبيرة</span><span class="amenity">🏛️ 3 قاعات</span></div>
+                <div class="notes ">البيت لذيذ بس الدنيا مش واضحة في الحجوزات.</div>
+                <button class="details-toggle" onclick="toggleDetails(this)">📋 تفاصيل وصور</button>
+                
+                <div class="gallery"><div class="gallery-grid"><img class="gallery-thumb" src="images/00000242-PHOTO-2024-11-29-23-03-13.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000243-PHOTO-2024-11-29-23-03-13.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000244-PHOTO-2024-11-29-23-03-25.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000245-PHOTO-2024-11-29-23-03-26.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000246-PHOTO-2024-11-29-23-03-26.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000247-PHOTO-2024-11-29-23-03-26.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000248-PHOTO-2024-11-29-23-03-27.jpg" onclick="openModal(this.src)" alt="صورة"><img class="gallery-thumb" src="images/00000249-PHOTO-2024-11-29-23-03-28.jpg" onclick="openModal(this.src)" alt="صورة"></div></div>
+            </div>
+        </div>
+        <div class="venue-card rejected" data-location="السويس" data-status="rejected">
+            <div class="venue-header loc-suez">
+                <span class="venue-name">بيت الأمير تادرس</span>
+                <span class="venue-status">❌ مرفوض</span>
+            </div>
+            <div class="venue-body">
+                
+                
+                <div class="venue-row"><span class="venue-label">سعر الليلة</span><span class="venue-value"><span class="price-tag">١٥٠ جنيه/فرد بدون وجبات</span></span></div><div class="venue-row"><span class="venue-label">Day Use</span><span class="venue-value"><span class="price-tag">٧٥ جنيه/فرد</span></span></div>
+                <div class="amenities"><span class="amenity">🏕️ أرض معسكر ~100 فرد</span><span class="amenity">🚿 كباين شاور</span><span class="amenity">🍳 مطبخ خاص</span><span class="amenity">🛏️ ٩٠ سرير</span></div>
+                <div class="notes danger">❌ متاح 1-6 يوليو 2025 فقط - باقي الشهر محجوز.</div>
+                <button class="details-toggle" onclick="toggleDetails(this)">📋 تفاصيل وصور</button>
+                <div class="details">مطبخ: عيون بوتاجاز + تلاجة + ديب فريزر</div>
+                
+            </div>
+        </div>
+        <div class="venue-card available" data-location="عرابي" data-status="available">
+            <div class="venue-header loc-shorouk">
+                <span class="venue-name">بيت المحبوب (جمعية أحمد عرابي)</span>
+                <span class="venue-status">عرابي</span>
+            </div>
+            <div class="venue-body">
+                
+                
+                <div class="venue-row"><span class="venue-label">سعر الليلة</span><span class="venue-value"><span class="price-tag">٢٧٠ صيامي / ٢٩٠ فطاري</span></span></div><div class="venue-row"><span class="venue-label">Day Use</span><span class="venue-value"><span class="price-tag">١٠٠ بدون غدا / ١٨٠ بالغدا</span></span></div>
+                <div class="amenities"><span class="amenity">🛏️ 60 سرير</span></div>
+                <div class="notes ">أقل عدد 40 فرد لحجز البيت كله.</div>
+                <button class="details-toggle" onclick="toggleDetails(this)">📋 تفاصيل وصور</button>
+                <div class="details">بيانات 10/5/2025</div>
+                
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>لجنة معسكرات ٢٠٢٥ ⛺</p>
+        <p>كنيسة العذراء ومارجرجس بمدينتي</p>
+    </footer>
+</div>
+
+<div id="imageModal" class="modal" onclick="closeModal()">
+    <span class="modal-close">&times;</span>
+    <img id="modalImage" src="">
+</div>
+
+<script>
+function filterVenues() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+    const cards = document.querySelectorAll('.venue-card');
+    let shown = 0;
+    
+    cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        const cardStatus = card.getAttribute('data-status');
+        
+        let matchSearch = search === '' || text.includes(search);
+        let matchStatus = status === '' || cardStatus === status;
+        
+        if (matchSearch && matchStatus) {
+            card.style.display = 'block';
+            shown++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    document.getElementById('totalCount').textContent = shown;
+}
+
+function toggleDetails(btn) {
+    const body = btn.parentElement;
+    const details = body.querySelector('.details');
+    const gallery = body.querySelector('.gallery');
+    if (details) details.classList.toggle('show');
+    if (gallery) gallery.classList.toggle('show');
+}
+
+function openModal(src) {
+    document.getElementById('modalImage').src = src;
+    document.getElementById('imageModal').classList.add('show');
+}
+
+function closeModal() {
+    document.getElementById('imageModal').classList.remove('show');
+}
+</script>
+</body>
+</html>
