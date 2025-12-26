@@ -149,12 +149,20 @@ function initFuse() {
 // Initialize
 // ============================================
 function init() {
-    initFuse();
-    restoreLocationFilters();
-    renderVenues(venues);
-    updateVenueCount(venues.length);
-    setupEventListeners();
-    setupModal();
+    // Show skeleton loading first
+    showSkeletonLoading();
+
+    // Delay actual content for perceived performance
+    setTimeout(() => {
+        initFuse();
+        restoreLocationFilters();
+        renderVenues(venues);
+        updateVenueCount(venues.length);
+        setupEventListeners();
+        setupModal();
+        setupBackToTop();
+        updateLastUpdated();
+    }, 300);
 }
 
 function updateVenueCount(count) {
@@ -223,17 +231,17 @@ function renderVenues(venuesData) {
             </div>
         `;
 
-        // Carousel
+        // Carousel with intelligent lazy loading
         let carouselHtml = '';
         if (venue.images && venue.images.length > 0) {
             const slidesHtml = venue.images.map((img, idx) => `
                 <div class="slide ${idx === 0 ? 'active' : ''}">
-                    <img src="${img}" alt="${venue.name} - ${idx + 1}" loading="lazy" data-index="${idx}">
+                    <img class="lazy" data-src="${img}" alt="${venue.name} - ${idx + 1}" data-index="${idx}" data-venue="${venue.id}">
                 </div>
             `).join('');
 
             carouselHtml = `
-                <div class="carousel" data-card="${venue.id}">
+                <div class="carousel" data-card="${venue.id}" data-images='${JSON.stringify(venue.images)}'>
                     <div class="slides">${slidesHtml}</div>
                     ${venue.images.length > 1 ? `
                     <button class="nav-btn prev">❮</button>
@@ -340,9 +348,12 @@ function renderVenues(venuesData) {
             shortestCol.appendChild(card);
         }
 
-        // Setup Carousel Events
-        if (venue.images && venue.images.length > 1) {
-            setupCarousel(card, venue.id, venue.images.length);
+        // Setup Carousel Events with smart image loading
+        if (venue.images && venue.images.length > 0) {
+            setupSmartImageLoading(card, venue.images);
+            if (venue.images.length > 1) {
+                setupCarousel(card, venue.id, venue.images.length);
+            }
         }
 
         // Fullscreen Image Event
@@ -585,6 +596,188 @@ function closeModal() {
     document.getElementById('imageModal').classList.remove('show');
     document.body.style.overflow = '';
 }
+
+// ============================================
+// Skeleton Loading
+// ============================================
+function showSkeletonLoading() {
+    const width = window.innerWidth;
+    let colCount = 1;
+    if (width >= 1600) colCount = 4;
+    else if (width >= 1200) colCount = 3;
+    else if (width >= 768) colCount = 2;
+
+    let skeletonHtml = '';
+    for (let i = 0; i < colCount; i++) {
+        skeletonHtml += '<div class="masonry-col">';
+        for (let j = 0; j < 3; j++) {
+            skeletonHtml += `
+                <div class="skeleton-card">
+                    <div class="skeleton-header"></div>
+                    <div class="skeleton skeleton-image"></div>
+                    <div class="skeleton skeleton-line medium"></div>
+                    <div class="skeleton skeleton-line short"></div>
+                    <div class="skeleton-amenities">
+                        <div class="skeleton skeleton-tag"></div>
+                        <div class="skeleton skeleton-tag"></div>
+                        <div class="skeleton skeleton-tag"></div>
+                    </div>
+                </div>
+            `;
+        }
+        skeletonHtml += '</div>';
+    }
+    venueGrid.innerHTML = skeletonHtml;
+}
+
+// ============================================
+// Back to Top Button
+// ============================================
+function setupBackToTop() {
+    const backToTopBtn = document.getElementById('backToTop');
+
+    // Show/hide based on scroll position
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 500) {
+            backToTopBtn.classList.add('show');
+        } else {
+            backToTopBtn.classList.remove('show');
+        }
+    });
+
+    // Scroll to top on click
+    backToTopBtn.addEventListener('click', () => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+}
+
+// ============================================
+// Last Updated Date
+// ============================================
+function updateLastUpdated() {
+    const lastUpdatedEl = document.getElementById('lastUpdated');
+    // Get the current date formatted in Arabic
+    const now = new Date();
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    const dateStr = now.toLocaleDateString('ar-EG', options);
+    lastUpdatedEl.textContent = `آخر تحديث: ${dateStr}`;
+}
+
+// ============================================
+// Intelligent Image Preloading
+// ============================================
+const imageLoadedMap = new Map(); // Track loaded images per venue
+
+function setupSmartImageLoading(card, images) {
+    const carousel = card.querySelector('.carousel');
+    if (!carousel) return;
+
+    const cardId = carousel.dataset.card;
+    imageLoadedMap.set(cardId, new Set());
+
+    // Use Intersection Observer for viewport detection
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                // Load first image immediately when visible
+                loadImageIntelligently(cardId, images, 0);
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { rootMargin: '100px' });
+
+    observer.observe(carousel);
+}
+
+function loadImageIntelligently(cardId, images, currentIndex) {
+    const loadedSet = imageLoadedMap.get(cardId) || new Set();
+
+    // Priority order: current → next → previous
+    const loadOrder = [
+        currentIndex,
+        (currentIndex + 1) % images.length,
+        (currentIndex - 1 + images.length) % images.length
+    ];
+
+    loadOrder.forEach((idx, priority) => {
+        if (!loadedSet.has(idx)) {
+            setTimeout(() => {
+                loadSingleImage(cardId, images[idx], idx);
+            }, priority * 150); // Stagger loading
+        }
+    });
+}
+
+function loadSingleImage(cardId, src, index) {
+    const imgEl = document.querySelector(`img[data-venue="${cardId}"][data-index="${index}"]`);
+    if (!imgEl || imgEl.classList.contains('loaded')) return;
+
+    const loadedSet = imageLoadedMap.get(cardId);
+
+    // Create hidden image to preload
+    const preloader = new Image();
+    preloader.onload = () => {
+        imgEl.src = src;
+        imgEl.classList.remove('lazy');
+        imgEl.classList.add('loaded');
+        if (loadedSet) loadedSet.add(index);
+    };
+    preloader.onerror = () => {
+        // Still show image on error (might work)
+        imgEl.src = src;
+        imgEl.classList.remove('lazy');
+    };
+    preloader.src = src;
+}
+
+// Enhance carousel navigation to trigger smart loading
+const originalSetupCarousel = setupCarousel;
+setupCarousel = function (card, cardId, totalSlides) {
+    const carousel = card.querySelector('.carousel');
+    const images = JSON.parse(carousel.dataset.images || '[]');
+    const prevBtn = carousel.querySelector('.prev');
+    const nextBtn = carousel.querySelector('.next');
+    const slides = carousel.querySelectorAll('.slide');
+    const counter = carousel.querySelector('.current');
+
+    carouselStates[cardId] = 0;
+
+    function updateSlide(newIndex) {
+        slides[carouselStates[cardId]].classList.remove('active');
+        carouselStates[cardId] = (newIndex + totalSlides) % totalSlides;
+        slides[carouselStates[cardId]].classList.add('active');
+        counter.textContent = carouselStates[cardId] + 1;
+
+        // Trigger intelligent preloading for adjacent images
+        loadImageIntelligently(cardId, images, carouselStates[cardId]);
+    }
+
+    prevBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        updateSlide(carouselStates[cardId] - 1);
+    });
+
+    nextBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        updateSlide(carouselStates[cardId] + 1);
+    });
+
+    // Swipe support
+    let touchStartX = 0;
+    carousel.addEventListener('touchstart', e => {
+        touchStartX = e.touches[0].clientX;
+    });
+    carousel.addEventListener('touchend', e => {
+        const diff = touchStartX - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 50) {
+            if (diff > 0) updateSlide(carouselStates[cardId] + 1);
+            else updateSlide(carouselStates[cardId] - 1);
+        }
+    });
+};
 
 // ============================================
 // Start

@@ -13,12 +13,10 @@
 <body>
     <div class="container">
         <header>
-            <!-- Row 1: Title + Subtitle + Count -->
-            <div class="header-row header-top">
-                <div class="header-title">
-                    <h1>🏕️ بيوت المعسكرات</h1>
-                    <span class="subtitle">كنيسة العذراء ومارجرجس بمدينتي</span>
-                </div>
+            <!-- Row 1: Title + Subtitle + Count (Centered, Stacked) -->
+            <div class="header-row header-top header-centered">
+                <h1>🏕️ بيوت المعسكرات</h1>
+                <span class="subtitle">كنيسة العذراء ومارجرجس بمدينتي</span>
                 <span class="stat" id="venueCount">📍 0 بيت</span>
             </div>
             <!-- Row 2: Search + Filter Toggle -->
@@ -74,8 +72,15 @@
         <footer>
             <p>لجنة معسكرات ٢٠٢٥ ⛺</p>
             <p>مرتب حسب القرب من مدينتي</p>
+            <div class="last-updated">
+                <span class="last-updated-icon">🔄</span>
+                <span id="lastUpdated">آخر تحديث: جاري التحميل...</span>
+            </div>
         </footer>
     </div>
+
+    <!-- Back to Top Button -->
+    <button class="back-to-top" id="backToTop" title="العودة للأعلى">⬆</button>
 
     <div id="imageModal" class="modal" dir="ltr">
         <span class="modal-close">&times;</span>
