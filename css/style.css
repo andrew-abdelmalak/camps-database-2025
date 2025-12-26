@@ -883,42 +883,6 @@ footer p:last-child {
     border-radius: var(--radius-xl);
 }
 
-/* ===== BACK TO TOP BUTTON ===== */
-.back-to-top {
-    position: fixed;
-    bottom: 30px;
-    left: 30px;
-    width: 50px;
-    height: 50px;
-    background: linear-gradient(135deg, var(--primary-500), var(--secondary-500));
-    color: white;
-    border: none;
-    border-radius: 50%;
-    font-size: 1.4rem;
-    cursor: pointer;
-    box-shadow: var(--shadow-lg);
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(20px);
-    transition: all 0.3s ease;
-    z-index: 99;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.back-to-top:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-xl);
-    background: linear-gradient(135deg, var(--primary-600), var(--secondary-600));
-}
-
-.back-to-top.show {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-}
-
 /* ===== LAST UPDATED DATE ===== */
 .last-updated {
     display: flex;

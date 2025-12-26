@@ -17,7 +17,7 @@ const venueCountEl = document.getElementById('venueCount');
 const carouselStates = {};
 let modalImages = [];
 let modalIndex = 0;
-let currentModalCardId = null; // Track which card's modal is open
+let currentModalCardId = null; // Track which card opened the modal
 let fuse = null; // Fuse.js instance
 
 // ============================================
@@ -157,14 +157,14 @@ function init() {
     setTimeout(() => {
         initFuse();
         restoreLocationFilters();
-        restoreCarouselStates(); // Restore saved carousel positions
         renderVenues(venues);
         updateVenueCount(venues.length);
         setupEventListeners();
         setupModal();
-        restoreScrollPosition(); // Restore scroll after render
-        setupScrollPersistence(); // Save scroll on change
         updateLastUpdated();
+        restoreScrollPosition();
+        restoreCarouselStates();
+        setupScrollPersistence();
     }, 300);
 }
 
@@ -237,10 +237,8 @@ function renderVenues(venuesData) {
         // Carousel with intelligent lazy loading
         let carouselHtml = '';
         if (venue.images && venue.images.length > 0) {
-            // Check for saved carousel state
-            const savedIndex = carouselStates[venue.id] || 0;
             const slidesHtml = venue.images.map((img, idx) => `
-                <div class="slide ${idx === savedIndex ? 'active' : ''}">
+                <div class="slide ${idx === 0 ? 'active' : ''}">
                     <img class="lazy" data-src="${img}" alt="${venue.name} - ${idx + 1}" data-index="${idx}" data-venue="${venue.id}">
                 </div>
             `).join('');
@@ -251,7 +249,7 @@ function renderVenues(venuesData) {
                     ${venue.images.length > 1 ? `
                     <button class="nav-btn prev">❮</button>
                     <button class="nav-btn next">❯</button>
-                    <div class="counter"><span class="current">${savedIndex + 1}</span>/${venue.images.length}</div>
+                    <div class="counter"><span class="current">1</span>/${venue.images.length}</div>
                     ` : ''}
                 </div>
             `;
@@ -361,7 +359,7 @@ function renderVenues(venuesData) {
             }
         }
 
-        // Fullscreen Image Event
+        // Fullscreen Image Event - pass venue.id for syncing back
         card.querySelectorAll('.slide img').forEach((img, index) => {
             img.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -551,6 +549,7 @@ function setupModal() {
         if (modalImages.length === 0) return;
         modalIndex = (modalIndex - 1 + modalImages.length) % modalImages.length;
         updateModalImage();
+        syncCarouselToModal(); // Sync card carousel to modal
     });
 
     nextBtn.addEventListener('click', (e) => {
@@ -558,6 +557,7 @@ function setupModal() {
         if (modalImages.length === 0) return;
         modalIndex = (modalIndex + 1) % modalImages.length;
         updateModalImage();
+        syncCarouselToModal(); // Sync card carousel to modal
     });
 
     // Keyboard support
@@ -573,7 +573,7 @@ function openModal(images, index, cardId) {
     if (!images || images.length === 0) return;
     modalImages = images;
     modalIndex = index || 0;
-    currentModalCardId = cardId || null;
+    currentModalCardId = cardId || null; // Store which card opened the modal
     updateModalImage();
     document.getElementById('imageModal').classList.add('show');
     document.body.style.overflow = 'hidden';
@@ -583,15 +583,13 @@ function updateModalImage() {
     document.getElementById('modalImage').src = modalImages[modalIndex];
     document.getElementById('modalCurrent').textContent = modalIndex + 1;
     document.getElementById('modalTotal').textContent = modalImages.length;
-
-    // Sync with outer carousel if cardId is known
-    if (currentModalCardId) {
-        syncCarouselWithModal(currentModalCardId, modalIndex);
-    }
 }
 
-function syncCarouselWithModal(cardId, imageIndex) {
-    const card = document.getElementById(`card-${cardId}`);
+// Sync the card carousel to match the modal's current image
+function syncCarouselToModal() {
+    if (!currentModalCardId) return;
+
+    const card = document.getElementById(`card-${currentModalCardId}`);
     if (!card) return;
 
     const slides = card.querySelectorAll('.slide');
@@ -599,26 +597,26 @@ function syncCarouselWithModal(cardId, imageIndex) {
 
     if (slides.length === 0) return;
 
-    // Update active slide
-    slides.forEach((slide, idx) => {
-        slide.classList.toggle('active', idx === imageIndex);
-    });
+    // Remove active from all slides
+    slides.forEach(slide => slide.classList.remove('active'));
 
-    // Update counter
-    if (counter) {
-        counter.textContent = imageIndex + 1;
+    // Set the matching slide as active
+    if (slides[modalIndex]) {
+        slides[modalIndex].classList.add('active');
+        carouselStates[currentModalCardId] = modalIndex;
+        if (counter) counter.textContent = modalIndex + 1;
+
+        // Trigger image loading for the new slide
+        loadImageIntelligently(currentModalCardId, modalImages, modalIndex);
+
+        // Save carousel state
+        saveCarouselStates();
     }
-
-    // Update carousel state
-    carouselStates[cardId] = imageIndex;
 }
 
 function closeModal() {
     document.getElementById('imageModal').classList.remove('show');
     document.body.style.overflow = '';
-
-    // Save carousel states when modal closes
-    saveCarouselStates();
     currentModalCardId = null;
 }
 
@@ -659,25 +657,49 @@ function showSkeletonLoading() {
 // Scroll Position Persistence
 // ============================================
 function setupScrollPersistence() {
-    let scrollTimeout;
+    let scrollTicking = false;
+
+    // Save scroll position periodically (throttled)
     window.addEventListener('scroll', () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-            try {
-                localStorage.setItem('campsdb_scroll_pos', window.scrollY.toString());
-            } catch (e) { }
-        }, 150);
+        if (!scrollTicking) {
+            window.requestAnimationFrame(() => {
+                saveScrollPosition();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
     }, { passive: true });
+
+    // Also save before page unload
+    window.addEventListener('beforeunload', () => {
+        saveScrollPosition();
+        saveCarouselStates();
+    });
+}
+
+function saveScrollPosition() {
+    try {
+        localStorage.setItem('campsdb_scroll_pos', JSON.stringify({
+            y: window.scrollY,
+            timestamp: Date.now()
+        }));
+    } catch (e) { }
 }
 
 function restoreScrollPosition() {
     try {
-        const savedPos = localStorage.getItem('campsdb_scroll_pos');
-        if (savedPos) {
-            // Use setTimeout to ensure DOM is ready
-            setTimeout(() => {
-                window.scrollTo(0, parseInt(savedPos, 10));
-            }, 100);
+        const saved = localStorage.getItem('campsdb_scroll_pos');
+        if (saved) {
+            const data = JSON.parse(saved);
+            // Only restore if saved within last 30 minutes
+            if (Date.now() - data.timestamp < 30 * 60 * 1000) {
+                setTimeout(() => {
+                    window.scrollTo({
+                        top: data.y,
+                        behavior: 'instant'
+                    });
+                }, 100);
+            }
         }
     } catch (e) { }
 }
@@ -687,7 +709,10 @@ function restoreScrollPosition() {
 // ============================================
 function saveCarouselStates() {
     try {
-        localStorage.setItem('campsdb_carousel_states', JSON.stringify(carouselStates));
+        localStorage.setItem('campsdb_carousel_states', JSON.stringify({
+            states: carouselStates,
+            timestamp: Date.now()
+        }));
     } catch (e) { }
 }
 
@@ -695,8 +720,27 @@ function restoreCarouselStates() {
     try {
         const saved = localStorage.getItem('campsdb_carousel_states');
         if (saved) {
-            const states = JSON.parse(saved);
-            Object.assign(carouselStates, states);
+            const data = JSON.parse(saved);
+            // Only restore if saved within last 30 minutes
+            if (Date.now() - data.timestamp < 30 * 60 * 1000 && data.states) {
+                Object.keys(data.states).forEach(cardId => {
+                    const savedIndex = data.states[cardId];
+                    const card = document.getElementById(`card-${cardId}`);
+                    if (card) {
+                        const slides = card.querySelectorAll('.slide');
+                        const counter = card.querySelector('.current');
+
+                        if (slides.length > savedIndex) {
+                            // Remove active from all
+                            slides.forEach(s => s.classList.remove('active'));
+                            // Set saved slide as active
+                            slides[savedIndex].classList.add('active');
+                            carouselStates[cardId] = savedIndex;
+                            if (counter) counter.textContent = savedIndex + 1;
+                        }
+                    }
+                });
+            }
         }
     } catch (e) { }
 }
@@ -790,10 +834,7 @@ setupCarousel = function (card, cardId, totalSlides) {
     const slides = carousel.querySelectorAll('.slide');
     const counter = carousel.querySelector('.current');
 
-    // Initialize from saved state or 0
-    if (carouselStates[cardId] === undefined) {
-        carouselStates[cardId] = 0;
-    }
+    carouselStates[cardId] = 0;
 
     function updateSlide(newIndex) {
         slides[carouselStates[cardId]].classList.remove('active');
@@ -804,7 +845,7 @@ setupCarousel = function (card, cardId, totalSlides) {
         // Trigger intelligent preloading for adjacent images
         loadImageIntelligently(cardId, images, carouselStates[cardId]);
 
-        // Save state on every change
+        // Save carousel state to localStorage
         saveCarouselStates();
     }
 
