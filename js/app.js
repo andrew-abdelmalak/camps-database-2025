@@ -671,15 +671,15 @@ function setupScrollPersistence() {
 }
 
 function restoreScrollPosition() {
-    // Temporarily disabled to debug mobile toolbar issue
-    // try {
-    //     const savedPos = localStorage.getItem('campsdb_scroll_pos');
-    //     if (savedPos) {
-    //         setTimeout(() => {
-    //             window.scrollTo(0, parseInt(savedPos, 10));
-    //         }, 100);
-    //     }
-    // } catch (e) { }
+    try {
+        const savedPos = localStorage.getItem('campsdb_scroll_pos');
+        if (savedPos) {
+            // Use setTimeout to ensure DOM is ready
+            setTimeout(() => {
+                window.scrollTo(0, parseInt(savedPos, 10));
+            }, 100);
+        }
+    } catch (e) { }
 }
 
 // ============================================

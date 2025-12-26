@@ -59,28 +59,22 @@
 /* Base */
 body {
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(135deg, var(--primary-500) 0%, var(--secondary-600) 100%);
     min-height: 100vh;
     padding: var(--safe-top) 0 var(--safe-bottom) 0;
     color: var(--gray-800);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    background: var(--primary-500);
-    /* Fallback color */
+    /* Prevent overscroll bounce/flicker */
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: auto;
 }
 
-/* Fixed background that won't flicker */
-body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, var(--primary-500) 0%, var(--secondary-600) 100%);
-    z-index: -1;
+html {
+    overscroll-behavior: none;
+    scroll-behavior: smooth;
 }
-
-
 
 /* ===== RESPONSIVE CONTAINER ===== */
 .container {
