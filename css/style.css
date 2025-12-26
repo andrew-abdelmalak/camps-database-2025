@@ -70,8 +70,6 @@ body {
 
 html {
     scroll-behavior: smooth;
-    overflow-y: scroll;
-    /* Ensure scrollbar is always handled by browser */
 }
 
 /* ===== RESPONSIVE CONTAINER ===== */
