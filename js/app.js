@@ -179,7 +179,13 @@ function updateVenueCount(count) {
 // Render Venues (JS Masonry)
 // ============================================
 let resizeTimeout;
+let lastWidth = window.innerWidth;
+
 window.addEventListener('resize', () => {
+    // Ignore vertical resize (address bar toggle on mobile)
+    if (window.innerWidth === lastWidth) return;
+    lastWidth = window.innerWidth;
+
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
         // Re-render only if column count would change, or just simple re-render
