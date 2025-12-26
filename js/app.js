@@ -17,6 +17,7 @@ const venueCountEl = document.getElementById('venueCount');
 const carouselStates = {};
 let modalImages = [];
 let modalIndex = 0;
+let currentModalCardId = null; // Track which card's modal is open
 let fuse = null; // Fuse.js instance
 
 // ============================================
@@ -156,11 +157,13 @@ function init() {
     setTimeout(() => {
         initFuse();
         restoreLocationFilters();
+        restoreCarouselStates(); // Restore saved carousel positions
         renderVenues(venues);
         updateVenueCount(venues.length);
         setupEventListeners();
         setupModal();
-        setupBackToTop();
+        restoreScrollPosition(); // Restore scroll after render
+        setupScrollPersistence(); // Save scroll on change
         updateLastUpdated();
     }, 300);
 }
@@ -234,8 +237,10 @@ function renderVenues(venuesData) {
         // Carousel with intelligent lazy loading
         let carouselHtml = '';
         if (venue.images && venue.images.length > 0) {
+            // Check for saved carousel state
+            const savedIndex = carouselStates[venue.id] || 0;
             const slidesHtml = venue.images.map((img, idx) => `
-                <div class="slide ${idx === 0 ? 'active' : ''}">
+                <div class="slide ${idx === savedIndex ? 'active' : ''}">
                     <img class="lazy" data-src="${img}" alt="${venue.name} - ${idx + 1}" data-index="${idx}" data-venue="${venue.id}">
                 </div>
             `).join('');
@@ -246,7 +251,7 @@ function renderVenues(venuesData) {
                     ${venue.images.length > 1 ? `
                     <button class="nav-btn prev">❮</button>
                     <button class="nav-btn next">❯</button>
-                    <div class="counter"><span class="current">1</span>/${venue.images.length}</div>
+                    <div class="counter"><span class="current">${savedIndex + 1}</span>/${venue.images.length}</div>
                     ` : ''}
                 </div>
             `;
@@ -360,7 +365,7 @@ function renderVenues(venuesData) {
         card.querySelectorAll('.slide img').forEach((img, index) => {
             img.addEventListener('click', (e) => {
                 e.stopPropagation();
-                openModal(venue.images, index);
+                openModal(venue.images, index, venue.id);
             });
         });
     });
@@ -564,10 +569,11 @@ function setupModal() {
     });
 }
 
-function openModal(images, index) {
+function openModal(images, index, cardId) {
     if (!images || images.length === 0) return;
     modalImages = images;
     modalIndex = index || 0;
+    currentModalCardId = cardId || null;
     updateModalImage();
     document.getElementById('imageModal').classList.add('show');
     document.body.style.overflow = 'hidden';
@@ -577,11 +583,43 @@ function updateModalImage() {
     document.getElementById('modalImage').src = modalImages[modalIndex];
     document.getElementById('modalCurrent').textContent = modalIndex + 1;
     document.getElementById('modalTotal').textContent = modalImages.length;
+
+    // Sync with outer carousel if cardId is known
+    if (currentModalCardId) {
+        syncCarouselWithModal(currentModalCardId, modalIndex);
+    }
+}
+
+function syncCarouselWithModal(cardId, imageIndex) {
+    const card = document.getElementById(`card-${cardId}`);
+    if (!card) return;
+
+    const slides = card.querySelectorAll('.slide');
+    const counter = card.querySelector('.current');
+
+    if (slides.length === 0) return;
+
+    // Update active slide
+    slides.forEach((slide, idx) => {
+        slide.classList.toggle('active', idx === imageIndex);
+    });
+
+    // Update counter
+    if (counter) {
+        counter.textContent = imageIndex + 1;
+    }
+
+    // Update carousel state
+    carouselStates[cardId] = imageIndex;
 }
 
 function closeModal() {
     document.getElementById('imageModal').classList.remove('show');
     document.body.style.overflow = '';
+
+    // Save carousel states when modal closes
+    saveCarouselStates();
+    currentModalCardId = null;
 }
 
 // ============================================
@@ -618,34 +656,49 @@ function showSkeletonLoading() {
 }
 
 // ============================================
-// Back to Top Button
+// Scroll Position Persistence
 // ============================================
-function setupBackToTop() {
-    const backToTopBtn = document.getElementById('backToTop');
-    let ticking = false;
-
-    // Throttled scroll handler to prevent flickering
+function setupScrollPersistence() {
+    let scrollTimeout;
     window.addEventListener('scroll', () => {
-        if (!ticking) {
-            window.requestAnimationFrame(() => {
-                if (window.scrollY > 500) {
-                    backToTopBtn.classList.add('show');
-                } else {
-                    backToTopBtn.classList.remove('show');
-                }
-                ticking = false;
-            });
-            ticking = true;
-        }
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            try {
+                localStorage.setItem('campsdb_scroll_pos', window.scrollY.toString());
+            } catch (e) { }
+        }, 150);
     }, { passive: true });
+}
 
-    // Scroll to top on click
-    backToTopBtn.addEventListener('click', () => {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
-    });
+function restoreScrollPosition() {
+    try {
+        const savedPos = localStorage.getItem('campsdb_scroll_pos');
+        if (savedPos) {
+            // Use setTimeout to ensure DOM is ready
+            setTimeout(() => {
+                window.scrollTo(0, parseInt(savedPos, 10));
+            }, 100);
+        }
+    } catch (e) { }
+}
+
+// ============================================
+// Carousel State Persistence
+// ============================================
+function saveCarouselStates() {
+    try {
+        localStorage.setItem('campsdb_carousel_states', JSON.stringify(carouselStates));
+    } catch (e) { }
+}
+
+function restoreCarouselStates() {
+    try {
+        const saved = localStorage.getItem('campsdb_carousel_states');
+        if (saved) {
+            const states = JSON.parse(saved);
+            Object.assign(carouselStates, states);
+        }
+    } catch (e) { }
 }
 
 // ============================================
@@ -737,7 +790,10 @@ setupCarousel = function (card, cardId, totalSlides) {
     const slides = carousel.querySelectorAll('.slide');
     const counter = carousel.querySelector('.current');
 
-    carouselStates[cardId] = 0;
+    // Initialize from saved state or 0
+    if (carouselStates[cardId] === undefined) {
+        carouselStates[cardId] = 0;
+    }
 
     function updateSlide(newIndex) {
         slides[carouselStates[cardId]].classList.remove('active');
@@ -747,6 +803,9 @@ setupCarousel = function (card, cardId, totalSlides) {
 
         // Trigger intelligent preloading for adjacent images
         loadImageIntelligently(cardId, images, carouselStates[cardId]);
+
+        // Save state on every change
+        saveCarouselStates();
     }
 
     prevBtn.addEventListener('click', (e) => {
