@@ -57,6 +57,7 @@
 }
 
 /* Base */
+/* Base */
 body {
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     background: linear-gradient(135deg, var(--primary-500) 0%, var(--secondary-600) 100%);
@@ -65,15 +66,12 @@ body {
     color: var(--gray-800);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    /* Prevent overscroll bounce/flicker */
-    overscroll-behavior: none;
-    overscroll-behavior-y: none;
-    -webkit-overflow-scrolling: auto;
 }
 
 html {
-    overscroll-behavior: none;
     scroll-behavior: smooth;
+    overflow-y: scroll;
+    /* Ensure scrollbar is always handled by browser */
 }
 
 /* ===== RESPONSIVE CONTAINER ===== */
