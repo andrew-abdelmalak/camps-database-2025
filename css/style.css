@@ -65,6 +65,15 @@ body {
     color: var(--gray-800);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    /* Prevent overscroll bounce/flicker */
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: auto;
+}
+
+html {
+    overscroll-behavior: none;
+    scroll-behavior: smooth;
 }
 
 /* ===== RESPONSIVE CONTAINER ===== */

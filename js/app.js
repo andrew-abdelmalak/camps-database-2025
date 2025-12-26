@@ -409,19 +409,6 @@ function setupCarousel(card, cardId, totalSlides) {
         e.stopPropagation();
         updateSlide(carouselStates[cardId] + 1);
     });
-
-    // Swipe support
-    let touchStartX = 0;
-    carousel.addEventListener('touchstart', e => {
-        touchStartX = e.touches[0].clientX;
-    });
-    carousel.addEventListener('touchend', e => {
-        const diff = touchStartX - e.changedTouches[0].clientX;
-        if (Math.abs(diff) > 50) {
-            if (diff > 0) updateSlide(carouselStates[cardId] + 1);
-            else updateSlide(carouselStates[cardId] - 1);
-        }
-    });
 }
 
 // ============================================
@@ -635,15 +622,22 @@ function showSkeletonLoading() {
 // ============================================
 function setupBackToTop() {
     const backToTopBtn = document.getElementById('backToTop');
+    let ticking = false;
 
-    // Show/hide based on scroll position
+    // Throttled scroll handler to prevent flickering
     window.addEventListener('scroll', () => {
-        if (window.scrollY > 500) {
-            backToTopBtn.classList.add('show');
-        } else {
-            backToTopBtn.classList.remove('show');
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                if (window.scrollY > 500) {
+                    backToTopBtn.classList.add('show');
+                } else {
+                    backToTopBtn.classList.remove('show');
+                }
+                ticking = false;
+            });
+            ticking = true;
         }
-    });
+    }, { passive: true });
 
     // Scroll to top on click
     backToTopBtn.addEventListener('click', () => {
@@ -763,19 +757,6 @@ setupCarousel = function (card, cardId, totalSlides) {
     nextBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         updateSlide(carouselStates[cardId] + 1);
-    });
-
-    // Swipe support
-    let touchStartX = 0;
-    carousel.addEventListener('touchstart', e => {
-        touchStartX = e.touches[0].clientX;
-    });
-    carousel.addEventListener('touchend', e => {
-        const diff = touchStartX - e.changedTouches[0].clientX;
-        if (Math.abs(diff) > 50) {
-            if (diff > 0) updateSlide(carouselStates[cardId] + 1);
-            else updateSlide(carouselStates[cardId] - 1);
-        }
     });
 };
 
