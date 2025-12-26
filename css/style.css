@@ -60,13 +60,13 @@
 body {
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     background: linear-gradient(135deg, var(--primary-500) 0%, var(--secondary-600) 100%);
+    background-attachment: fixed;
+    /* Prevent background flicker on overscroll */
     min-height: 100vh;
     padding: var(--safe-top) 0 var(--safe-bottom) 0;
     color: var(--gray-800);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    /* Reduce overscroll flicker without blocking toolbar */
-    overscroll-behavior-y: contain;
 }
 
 
