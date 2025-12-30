@@ -33,7 +33,7 @@ camps-database-2025/
 ├── js/
 │   ├── app.js          # Core logic (rendering, filtering, interactions)
 │   └── data.js         # Venue data database
-├── assets/             # Images and static assets
+├── images/             # Venue images organized by ID
 └── index.html          # Main entry point
 ```
 
