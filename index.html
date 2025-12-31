@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#667eea">
+    <title>دليل بيوت المعسكرات</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <!-- Row 1: Title + Subtitle + Count (Centered, Stacked) -->
+            <div class="header-row header-top header-centered">
+                <h1>🏕️ بيوت المعسكرات</h1>
+                <span class="subtitle">كنيسة العذراء ومارجرجس بمدينتي</span>
+                <span class="stat" id="venueCount">📍 0 بيت</span>
+            </div>
+            <!-- Row 2: Search + Filter Toggle -->
+            <div class="header-row header-bottom">
+                <input type="text" id="searchInput" placeholder="🔍 بحث بالعربي أو English أو Franco...">
+                <button class="filter-toggle" id="filterToggle">📍 فلتر المواقع ▶</button>
+            </div>
+
+            <!-- Filter Checkboxes (collapsible, inside header for sticky) -->
+            <div class="loc-checkboxes hidden" id="locCheckboxes">
+                <label class="loc-checkbox select-all"><input type="checkbox" id="selectAllLocs" checked><span>✓
+                        الكل</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="الشروق" checked><span>الشروق</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="العبور" checked><span>العبور</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="عرابي" checked><span>عرابي</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="المقطم" checked><span>المقطم</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="طريق السويس" checked><span>طريق
+                        السويس</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="الريف الأوروبي" checked><span>الريف
+                        الأوروبي</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="مدينة السادات" checked><span>مدينة
+                        السادات</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="الفيوم" checked><span>الفيوم</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="وادي النطرون" checked><span>وادي
+                        النطرون</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="الإسماعيلية"
+                        checked><span>الإسماعيلية</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="السويس" checked><span>السويس</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="السخنة" checked><span>السخنة</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="فايد" checked><span>فايد</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="بورفؤاد" checked><span>بورفؤاد</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="كينج مريوط" checked><span>كينج
+                        مريوط</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="أبو تلات" checked><span>أبو
+                        تلات</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="سيدي كرير" checked><span>سيدي
+                        كرير</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="راس سدر" checked><span>راس سدر</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="العلمين" checked><span>العلمين</span></label>
+                <label class="loc-checkbox"><input type="checkbox" value="غير محدد" checked><span>غير
+                        محدد</span></label>
+            </div>
+        </header>
+
+        <div class="venue-grid" id="venueGrid">
+            <!-- Content filled by JS -->
+        </div>
+
+        <div class="no-results" id="noResults">
+            😕 لا توجد نتائج
+        </div>
+
+        <footer>
+            <p>لجنة معسكرات ٢٠٢٥ ⛺</p>
+            <p>مرتب حسب القرب من مدينتي</p>
+            <div class="last-updated">
+                <span class="last-updated-icon">🔄</span>
+                <span id="lastUpdated">آخر تحديث: جاري التحميل...</span>
+            </div>
+        </footer>
+    </div>
+
+    <div id="imageModal" class="modal" dir="ltr">
+        <span class="modal-close">&times;</span>
+        <button class="modal-nav modal-prev">❮</button>
+        <img id="modalImage" src="">
+        <button class="modal-nav modal-next">❯</button>
+        <div class="modal-counter"><span id="modalCurrent">1</span> / <span id="modalTotal">1</span></div>
+    </div>
+
+    <!-- Fuse.js for fuzzy search -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
