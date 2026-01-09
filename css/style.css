@@ -469,32 +469,192 @@ h1 {
     box-shadow: var(--shadow-sm);
 }
 
-/* Amenities */
+/* ===== PHONE LIST STYLING (V4) ===== */
+.venue-row-phones {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.venue-row-phones .venue-label {
+    flex-shrink: 0;
+}
+
+.phone-items-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    flex: 1;
+}
+
+.phone-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--gray-50);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1px solid var(--gray-200);
+    /* Content-fit sizing */
+    width: auto;
+    flex-shrink: 0;
+}
+
+.phone-item:hover {
+    background: var(--primary-50, #eff6ff);
+    border-color: var(--primary-300, #93c5fd);
+    text-decoration: none;
+}
+
+.phone-number {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary-600);
+    direction: ltr;
+    unicode-bidi: embed;
+    white-space: nowrap;
+}
+
+.phone-contact {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* ===== LINKS STYLING (V7 - same as phones) ===== */
+.venue-row-links {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.venue-row-links .venue-label {
+    flex-shrink: 0;
+}
+
+.links-items-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    flex: 1;
+}
+
+.link-item {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--primary-600);
+    border: 1px solid #93c5fd;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.link-item:hover {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    text-decoration: none;
+}
+
+/* ===== PRICE STYLING (V7 - same as phones) ===== */
+.venue-row-price {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.venue-row-price .venue-label {
+    flex-shrink: 0;
+}
+
+.price-items-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    flex: 1;
+}
+
+.price-badge {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.8rem;
+    border: 1px solid #fcd34d;
+    white-space: nowrap;
+}
+
+/* ===== CAPACITY STYLING (V7 - same as phones) ===== */
+.venue-row-capacity {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.venue-row-capacity .venue-label {
+    flex-shrink: 0;
+}
+
+.capacity-badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    flex: 1;
+}
+
+.capacity-badge {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #1e40af;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.8rem;
+    border: 1px solid #93c5fd;
+    white-space: nowrap;
+}
+
+/* Amenities (V4) */
 .amenities {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin: 14px 0;
+    gap: 4px;
+    margin: 10px 0;
 }
 
 .amenity {
     background: var(--gray-100);
-    padding: 6px 14px;
-    border-radius: var(--radius-xl);
-    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: var(--radius-md);
+    font-size: 0.75rem;
     font-weight: 500;
     color: var(--gray-700);
     border: 1px solid var(--gray-200);
 }
 
-/* Notes */
+/* Notes - fit to content */
 .notes {
+    display: inline-block;
     background: linear-gradient(135deg, #fffbeb, #fef3c7);
-    padding: 14px 18px;
+    padding: 8px 14px;
     border-radius: var(--radius-md);
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     color: #92400e;
-    margin-top: 14px;
+    margin-top: 10px;
     border-right: 4px solid #f59e0b;
     font-weight: 500;
 }
@@ -511,7 +671,7 @@ h1 {
     border-right-color: #22c55e;
 }
 
-/* Details */
+/* Details (Legacy) */
 .details {
     background: var(--gray-50);
     padding: 14px 18px;
@@ -520,6 +680,233 @@ h1 {
     margin-top: 10px;
     color: var(--gray-600);
     border: 1px solid var(--gray-100);
+}
+
+/* ===== V5 DETAILS STYLING ===== */
+.details-v5 {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.details-section {
+    background: var(--gray-50);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    border: 1px solid var(--gray-100);
+}
+
+.details-header {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gray-500);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+/* Room Pricing Grid */
+.room-pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 4px;
+}
+
+.room-price-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: white;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--gray-200);
+}
+
+.room-occupancy {
+    font-size: 0.7rem;
+    color: var(--gray-500);
+}
+
+.room-price {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--primary-600);
+}
+
+/* Meal Badges */
+.meal-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.meal-badge {
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.meal-badge.regular {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.meal-badge.fasting {
+    background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+    color: #4338ca;
+    border: 1px solid #a5b4fc;
+}
+
+/* Facility Prices */
+.facility-prices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.facility-price-badge {
+    background: var(--gray-100);
+    color: var(--gray-700);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid var(--gray-200);
+}
+
+/* Includes */
+.includes-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.include-badge {
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    color: #065f46;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid #6ee7b7;
+}
+
+/* Warnings */
+.details-warnings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.warning-badge {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid #fcd34d;
+}
+
+/* Remaining Text */
+.details-remaining {
+    font-size: 0.8rem;
+    color: var(--gray-600);
+    padding: 8px;
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--gray-200);
+}
+
+/* ===== V6 UNIVERSAL SEGMENTS (V7 fit-to-content) ===== */
+.details-segments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.segment-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--gray-100);
+    font-size: 0.8rem;
+    line-height: 1.3;
+}
+
+.segment-icon {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+}
+
+.segment-text {
+    color: var(--gray-700);
+}
+
+/* Type-specific colors */
+.segment-rooms {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+
+.segment-kitchen {
+    background: #fef3c7;
+    border-color: #fcd34d;
+}
+
+.segment-halls {
+    background: #f3e8ff;
+    border-color: #d8b4fe;
+}
+
+.segment-sports {
+    background: #dcfce7;
+    border-color: #86efac;
+}
+
+.segment-pool {
+    background: #cffafe;
+    border-color: #67e8f9;
+}
+
+.segment-church {
+    background: #fce7f3;
+    border-color: #f9a8d4;
+}
+
+.segment-meals {
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+}
+
+.segment-bathroom {
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+}
+
+.segment-transport {
+    background: #fef9c3;
+    border-color: #fde047;
+}
+
+.segment-pricing {
+    background: #fef3c7;
+    border-color: #fbbf24;
+}
+
+.segment-warning {
+    background: #fef3c7;
+    border-color: #f59e0b;
+}
+
+.segment-includes {
+    background: #d1fae5;
+    border-color: #34d399;
 }
 
 /* ===== PHOTO CAROUSEL ===== */

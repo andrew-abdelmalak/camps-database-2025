@@ -268,55 +268,101 @@ function renderVenues(venuesData) {
             </div>
         `;
 
-        // Phones
+        // Phones - inline with label, items align left
         const phonesHtml = venue.phones && venue.phones.length > 0 ? `
-            <div class="venue-row">
+            <div class="venue-row venue-row-phones">
                 <span class="venue-label">📞 التليفون</span>
-                <span class="venue-value">
-                    ${venue.phones.map(p => `<a href="tel:${p.number}">${p.label || p.number}</a>`).join(' / ')}
-                </span>
+                <div class="phone-items-wrapper">
+                    ${venue.phones.map(p => {
+            const contactName = p.label && p.label !== p.number
+                ? p.label.replace(p.number, '').replace(':', '').trim()
+                : null;
+            return `<a href="tel:${p.number}" class="phone-item">
+                            <span class="phone-number">${p.number}</span>
+                            ${contactName ? `<span class="phone-contact">${contactName}</span>` : ''}
+                        </a>`;
+        }).join('')}
+                </div>
             </div>
         ` : '';
 
-        // Links
+        // Links - same layout as phones (label right, items left)
         const linksHtml = venue.links && venue.links.length > 0 ? `
-            <div class="venue-row">
+            <div class="venue-row venue-row-links">
                 <span class="venue-label">🔗 اللينكات</span>
-                <span class="venue-value">
-                    ${venue.links.map(l => `<a href="${l.url}" target="_blank">${l.label || 'رابط'}</a>`).join(' | ')}
-                </span>
+                <div class="links-items-wrapper">
+                    ${venue.links.map(l => `<a href="${l.url}" target="_blank" class="link-item">${l.label || 'رابط'}</a>`).join('')}
+                </div>
             </div>
         ` : '';
 
-        // Price
-        const priceHtml = venue.price ? `
-            <div class="venue-row">
+        // Price - same layout as phones (label right, items left)
+        const priceHtml = (venue.price && venue.price.length > 0) ? `
+            <div class="venue-row venue-row-price">
                 <span class="venue-label">💰 السعر</span>
-                <span class="venue-value"><span class="price-tag">${venue.price}</span></span>
+                <div class="price-items-wrapper">
+                    ${venue.price.map(p => `<span class="price-badge">${p}</span>`).join('')}
+                </div>
             </div>
         ` : '';
 
-        // Capacity
-        const capacityHtml = venue.capacity ? `
-            <div class="venue-row">
+        // Capacity - show as badges
+        const capacityHtml = (venue.capacity && venue.capacity.length > 0) ? `
+            <div class="venue-row venue-row-capacity">
                 <span class="venue-label">👥 السعة</span>
-                <span class="venue-value">${venue.capacity}</span>
+                <div class="capacity-badges">
+                    ${venue.capacity.map(c => `<span class="capacity-badge">${c}</span>`).join('')}
+                </div>
             </div>
         ` : '';
 
-        // Amenities
-        const amenitiesHtml = venue.amenities && venue.amenities.length > 0 ? `
-            <div class="amenities">
-                ${venue.amenities.map(a => `<span class="amenity">${a}</span>`).join('')}
-            </div>
-        ` : '';
+        // Facilities - use V3 icons if available, fallback to legacy amenities
+        const facilityIcons = {
+            campground: '🏕️ أرض معسكر',
+            camping: '⛺ تخييم',
+            rooms: '🛏️ مبيت',
+            kitchen: '🍳 مطبخ',
+            bathrooms: '🚿 حمامات',
+            church: '⛪ كنيسة',
+            halls: '🏛️ قاعات',
+            sportsFields: '⚽ ملاعب',
+            pool: '🏊 حمام سباحة',
+            theater: '🎭 مسرح',
+            pergolas: '⛱️ برجولات',
+            canteen: '🏪 كانتين',
+            airConditioning: '❄️ تكييف',
+            playground: '🎠 ألعاب',
+            beach: '🌊 بحر',
+            bbq: '🔥 شواية',
+            waterCooler: '💧 كولدير'
+        };
+
+        let amenitiesHtml = '';
+        if (venue.facilitiesV3) {
+            const activeF = Object.entries(venue.facilitiesV3)
+                .filter(([k, v]) => v === true && facilityIcons[k])
+                .map(([k]) => facilityIcons[k]);
+            if (activeF.length) {
+                amenitiesHtml = `
+                    <div class="amenities">
+                        ${activeF.map(a => `<span class="amenity">${a}</span>`).join('')}
+                    </div>
+                `;
+            }
+        } else if (venue.amenities && venue.amenities.length > 0) {
+            amenitiesHtml = `
+                <div class="amenities">
+                    ${venue.amenities.map(a => `<span class="amenity">${a}</span>`).join('')}
+                </div>
+            `;
+        }
 
         // Notes
         const notesHtml = venue.notes ? `
             <div class="notes ${venue.notesType || ''}">${venue.notes}</div>
         ` : '';
 
-        // Details
+        // Details - simple display (no V5/V6 parsing)
         const detailsHtml = venue.details ? `
             <div class="details">${venue.details}</div>
         ` : '';
