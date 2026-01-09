@@ -19,6 +19,142 @@ let modalImages = [];
 let modalIndex = 0;
 let currentModalCardId = null; // Track which card opened the modal
 let fuse = null; // Fuse.js instance
+let currentTab = 'qualified'; // Current active tab
+let activeCriteria = ['hasCampGround', 'hasKitchen', 'hasHallsOrPergolas']; // Currently enabled criteria
+
+// ============================================
+// VENUE QUALIFICATION SYSTEM
+// ============================================
+
+// Criteria detection keywords
+const CRITERIA = {
+    hasCampGround: {
+        name: 'أرض معسكر',
+        positive: ['أرض معسكر', 'أرض تخييم', 'أرض كشفية', 'أرض رملية', 'تخييم', '🏕️ أرض'],
+        negative: ['مفيش أرض', 'لا يوجد ارض', 'أرض لا تصلح', 'مفيش تخييم', 'نو تخييم', 'مفيش أرض تخييم', 'مفيش أرض معسكر', 'مفيش أرض كشافة'],
+    },
+    hasKitchen: {
+        name: 'مطبخ',
+        positive: ['🍳 مطبخ', 'مطبخ'],
+        negative: ['مفيش مطبخ', 'بدون مطبخ'],
+    },
+    hasHallsOrPergolas: {
+        name: 'قاعات/برجولات',
+        positive: ['🏛️ قاعات', 'قاعة', 'قاعات', '⛱️ برجولات', 'برجولا', 'برجولات'],
+        negative: ['مفيش قاعات', 'بدون قاعات', 'مفيش قاعات ولا مبيت'],
+    },
+};
+
+// Automatic exclusion patterns
+const EXCLUSION_PATTERNS = [
+    'تحت الإنشاء', 'أرض لا تصلح', 'مفيش أرض معسكر', 'مفيش أرض تخييم',
+    'لا يوجد ارض', 'مفيش تخييم', 'نو تخييم', 'مش بيستقبل معسكرات كشفية',
+    'مفيش بيت', 'مساحة صغيرة', 'المكان صغير', 'مفيش أرض كشافة'
+];
+
+// Get all text from venue for searching
+function getVenueText(venue) {
+    return [
+        ...(venue.amenities || []),
+        venue.notes || '',
+        venue.details || '',
+        venue.status || ''
+    ].join(' ');
+}
+
+// Check if venue has exclusion reason
+function checkExclusion(venue) {
+    const text = getVenueText(venue);
+    for (const pattern of EXCLUSION_PATTERNS) {
+        if (text.includes(pattern)) return pattern;
+    }
+    return null;
+}
+
+// Check single criterion (returns true/false/null)
+function checkCriterion(venue, criterionKey) {
+    const text = getVenueText(venue);
+    const criterion = CRITERIA[criterionKey];
+
+    for (const neg of criterion.negative) {
+        if (text.includes(neg)) return false;
+    }
+    for (const pos of criterion.positive) {
+        if (text.includes(pos)) return true;
+    }
+    return null; // Unknown
+}
+
+// Qualify a venue (returns 'qualified', 'followup', or 'excluded')
+function qualifyVenue(venue) {
+    // Check for exclusion patterns first
+    const exclusion = checkExclusion(venue);
+    if (exclusion) {
+        venue._qualification = 'excluded';
+        venue._exclusionReason = exclusion;
+        return 'excluded';
+    }
+
+    // If no criteria are active, everything is qualified
+    if (activeCriteria.length === 0) {
+        venue._qualification = 'qualified';
+        return 'qualified';
+    }
+
+    // Check each active criterion
+    const criteriaResults = {};
+    let anyFailed = false;
+    let allMet = true;
+    const missing = [];
+
+    for (const criterionKey of activeCriteria) {
+        const result = checkCriterion(venue, criterionKey);
+        criteriaResults[criterionKey] = result;
+
+        if (result === false) {
+            anyFailed = true;
+            missing.push(CRITERIA[criterionKey].name);
+        }
+        if (result !== true) {
+            allMet = false;
+        }
+    }
+
+    venue._criteria = criteriaResults;
+
+    // If any active criterion explicitly fails, exclude
+    if (anyFailed) {
+        venue._qualification = 'excluded';
+        venue._exclusionReason = 'Missing: ' + missing.join(', ');
+        return 'excluded';
+    }
+
+    // If all active criteria met, qualified
+    if (allMet) {
+        venue._qualification = 'qualified';
+        return 'qualified';
+    }
+
+    // Otherwise, needs follow-up
+    venue._qualification = 'followup';
+    return 'followup';
+}
+
+// Qualify all venues and return categorized lists
+function qualifyAllVenues() {
+    const qualified = [];
+    const followup = [];
+    const excluded = [];
+
+    for (const venue of venues) {
+        const result = qualifyVenue(venue);
+        if (result === 'qualified') qualified.push(venue);
+        else if (result === 'excluded') excluded.push(venue);
+        else followup.push(venue);
+    }
+
+    return { qualified, followup, excluded };
+}
 
 // ============================================
 // ARABIZI (Franco-Arab) to Arabic Mapping
@@ -155,9 +291,18 @@ function init() {
 
     // Delay actual content for perceived performance
     setTimeout(() => {
+        // Qualify all venues first
+        const { qualified, followup, excluded } = qualifyAllVenues();
+
+        // Update tab counts
+        document.getElementById('qualifiedCount').textContent = qualified.length;
+        document.getElementById('followupCount').textContent = followup.length;
+        document.getElementById('excludedCount').textContent = excluded.length;
+
         initFuse();
-        restoreLocationFilters();
-        filterVenues(); // Renders venues and updates count based on restored filters
+        setupTabListeners();
+        setupSettings();
+        filterVenues(); // Renders venues based on current tab
         setupEventListeners();
         setupModal();
         updateLastUpdated();
@@ -165,6 +310,59 @@ function init() {
         restoreCarouselStates();
         setupScrollPersistence();
     }, 300);
+}
+
+// Tab switching
+function setupTabListeners() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Update active state
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Update current tab
+            currentTab = btn.dataset.tab;
+
+            // Re-filter venues
+            filterVenues();
+        });
+    });
+}
+
+// Settings panel
+function setupSettings() {
+    const settingsToggle = document.getElementById('settingsToggle');
+    const settingsContent = document.getElementById('settingsContent');
+    const criteriaCheckboxes = document.querySelectorAll('#criteriaCheckboxes input[type="checkbox"]');
+
+    // Toggle settings panel
+    settingsToggle.addEventListener('click', () => {
+        settingsContent.classList.toggle('hidden');
+        settingsToggle.classList.toggle('active');
+    });
+
+    // Handle criteria checkbox changes
+    criteriaCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            // Update activeCriteria array
+            activeCriteria = Array.from(criteriaCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+
+            // Update checkbox label styling
+            checkbox.parentElement.classList.toggle('checked', checkbox.checked);
+
+            // Requalify all venues and update counts
+            const { qualified, followup, excluded } = qualifyAllVenues();
+            document.getElementById('qualifiedCount').textContent = qualified.length;
+            document.getElementById('followupCount').textContent = followup.length;
+            document.getElementById('excludedCount').textContent = excluded.length;
+
+            // Re-render current tab
+            filterVenues();
+        });
+    });
 }
 
 function updateVenueCount(count) {
@@ -367,6 +565,37 @@ function renderVenues(venuesData) {
             <div class="details">${venue.details}</div>
         ` : '';
 
+        // Criteria Checklist - show what's confirmed/unknown/missing
+        let criteriaHtml = '';
+        if (venue._qualification === 'followup' && venue._criteria) {
+            const criteriaItems = [];
+            for (const key of activeCriteria) {
+                const status = venue._criteria[key];
+                const name = CRITERIA[key]?.name || key;
+                if (status === true) {
+                    criteriaItems.push(`<span class="criteria-status criteria-ok">✓ ${name}</span>`);
+                } else if (status === null) {
+                    criteriaItems.push(`<span class="criteria-status criteria-unknown">❓ ${name}</span>`);
+                }
+            }
+            if (criteriaItems.length > 0) {
+                criteriaHtml = `
+                    <div class="criteria-checklist">
+                        <div class="criteria-header">📋 التحقق المطلوب:</div>
+                        <div class="criteria-items">${criteriaItems.join('')}</div>
+                    </div>
+                `;
+            }
+        }
+        // Show exclusion reason for excluded venues
+        if (venue._qualification === 'excluded' && venue._exclusionReason) {
+            criteriaHtml = `
+                <div class="exclusion-reason">
+                    <span>❌ ${venue._exclusionReason}</span>
+                </div>
+            `;
+        }
+
         card.innerHTML = `
             ${headerHtml}
             <div class="card-body">
@@ -377,6 +606,7 @@ function renderVenues(venuesData) {
                 ${priceHtml}
                 ${capacityHtml}
                 ${amenitiesHtml}
+                ${criteriaHtml}
                 ${notesHtml}
                 ${detailsHtml}
             </div>
@@ -503,18 +733,26 @@ function setupEventListeners() {
 }
 
 // ============================================
-// Filter Logic with Fuzzy Search
+// Filter Logic with Fuzzy Search + Tab Filtering
 // ============================================
 function filterVenues() {
     const rawQuery = searchInput.value.trim();
-    const selectedLocs = Array.from(document.querySelectorAll('.loc-checkbox:not(.select-all) input:checked'))
-        .map(cb => cb.value);
 
-    let matchedVenues = venues;
+    // First filter by current tab (qualification status)
+    let matchedVenues = venues.filter(v => v._qualification === currentTab);
 
     // Apply fuzzy search if query exists
-    if (rawQuery.length >= 2) {
+    if (rawQuery.length >= 2 && matchedVenues.length > 0) {
         const queryData = prepareSearchQuery(rawQuery);
+
+        // Create a temporary Fuse instance for the filtered venues
+        const tempFuse = new Fuse(matchedVenues, {
+            keys: ['name', 'location', 'notes', 'details', 'amenities', 'price', 'capacity'],
+            threshold: 0.4,
+            ignoreLocation: true,
+            includeScore: true,
+            minMatchCharLength: 2,
+        });
 
         // Search with all versions of the query
         const searches = [
@@ -526,7 +764,7 @@ function filterVenues() {
         const allResults = new Map();
 
         searches.forEach(query => {
-            const results = fuse.search(query);
+            const results = tempFuse.search(query);
             results.forEach(r => {
                 const existing = allResults.get(r.item.id);
                 if (!existing || r.score < existing.score) {
@@ -538,11 +776,6 @@ function filterVenues() {
         matchedVenues = Array.from(allResults.values())
             .sort((a, b) => a.score - b.score)
             .map(r => r.item);
-    }
-
-    // Apply location filter
-    if (selectedLocs.length > 0 && selectedLocs.length < document.querySelectorAll('.loc-checkbox:not(.select-all) input').length) {
-        matchedVenues = matchedVenues.filter(v => selectedLocs.includes(v.location));
     }
 
     // Render results

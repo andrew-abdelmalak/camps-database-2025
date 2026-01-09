@@ -19,47 +19,54 @@
                 <span class="subtitle">كنيسة العذراء ومارجرجس بمدينتي</span>
                 <span class="stat" id="venueCount">📍 0 بيت</span>
             </div>
-            <!-- Row 2: Search + Filter Toggle -->
+            <!-- Row 2: Search -->
             <div class="header-row header-bottom">
                 <input type="text" id="searchInput" placeholder="🔍 بحث بالعربي أو English أو Franco...">
-                <button class="filter-toggle" id="filterToggle">📍 فلتر المواقع ▶</button>
             </div>
 
-            <!-- Filter Checkboxes (collapsible, inside header for sticky) -->
-            <div class="loc-checkboxes hidden" id="locCheckboxes">
-                <label class="loc-checkbox select-all"><input type="checkbox" id="selectAllLocs" checked><span>✓
-                        الكل</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="الشروق" checked><span>الشروق</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="العبور" checked><span>العبور</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="عرابي" checked><span>عرابي</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="المقطم" checked><span>المقطم</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="طريق السويس" checked><span>طريق
-                        السويس</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="الريف الأوروبي" checked><span>الريف
-                        الأوروبي</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="مدينة السادات" checked><span>مدينة
-                        السادات</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="الفيوم" checked><span>الفيوم</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="وادي النطرون" checked><span>وادي
-                        النطرون</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="الإسماعيلية"
-                        checked><span>الإسماعيلية</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="السويس" checked><span>السويس</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="السخنة" checked><span>السخنة</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="فايد" checked><span>فايد</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="بورفؤاد" checked><span>بورفؤاد</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="كينج مريوط" checked><span>كينج
-                        مريوط</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="أبو تلات" checked><span>أبو
-                        تلات</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="سيدي كرير" checked><span>سيدي
-                        كرير</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="راس سدر" checked><span>راس سدر</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="العلمين" checked><span>العلمين</span></label>
-                <label class="loc-checkbox"><input type="checkbox" value="غير محدد" checked><span>غير
-                        محدد</span></label>
+            <!-- Tab Navigation -->
+            <div class="tab-navigation" id="tabNavigation">
+                <button class="tab-btn active" data-tab="qualified">
+                    <span class="tab-icon">✅</span>
+                    <span class="tab-label">مؤهلة</span>
+                    <span class="tab-count" id="qualifiedCount">0</span>
+                </button>
+                <button class="tab-btn" data-tab="followup">
+                    <span class="tab-icon">❓</span>
+                    <span class="tab-label">متابعة</span>
+                    <span class="tab-count" id="followupCount">0</span>
+                </button>
+                <button class="tab-btn" data-tab="excluded">
+                    <span class="tab-icon">❌</span>
+                    <span class="tab-label">مستبعدة</span>
+                    <span class="tab-count" id="excludedCount">0</span>
+                </button>
             </div>
         </header>
+
+        <!-- Settings Panel -->
+        <div class="settings-panel" id="settingsPanel">
+            <button class="settings-toggle" id="settingsToggle">⚙️ إعدادات المعايير</button>
+            <div class="settings-content hidden" id="settingsContent">
+                <div class="settings-section">
+                    <div class="settings-header">المعايير المطلوبة:</div>
+                    <div class="criteria-checkboxes" id="criteriaCheckboxes">
+                        <label class="criteria-checkbox checked">
+                            <input type="checkbox" value="hasCampGround" checked>
+                            <span>🏕️ أرض معسكر</span>
+                        </label>
+                        <label class="criteria-checkbox checked">
+                            <input type="checkbox" value="hasKitchen" checked>
+                            <span>🍳 مطبخ</span>
+                        </label>
+                        <label class="criteria-checkbox checked">
+                            <input type="checkbox" value="hasHallsOrPergolas" checked>
+                            <span>🏛️ قاعات/برجولات</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="venue-grid" id="venueGrid">
             <!-- Content filled by JS -->
