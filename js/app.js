@@ -20,7 +20,7 @@ let modalIndex = 0;
 let currentModalCardId = null; // Track which card opened the modal
 let fuse = null; // Fuse.js instance
 let currentTab = 'qualified'; // Current active tab
-let activeCriteria = ['hasCampGround', 'hasKitchen', 'hasHallsOrPergolas']; // Currently enabled criteria
+let activeCriteria = ['hasCampGround', 'hasKitchen', 'hasHalls', 'hasPergolas']; // Currently enabled criteria
 
 // ============================================
 // VENUE QUALIFICATION SYSTEM
@@ -38,10 +38,15 @@ const CRITERIA = {
         positive: ['🍳 مطبخ', 'مطبخ'],
         negative: ['مفيش مطبخ', 'بدون مطبخ'],
     },
-    hasHallsOrPergolas: {
-        name: 'قاعات/برجولات',
-        positive: ['🏛️ قاعات', 'قاعة', 'قاعات', '⛱️ برجولات', 'برجولا', 'برجولات'],
+    hasHalls: {
+        name: 'قاعات',
+        positive: ['🏛️ قاعات', 'قاعة', 'قاعات'],
         negative: ['مفيش قاعات', 'بدون قاعات', 'مفيش قاعات ولا مبيت'],
+    },
+    hasPergolas: {
+        name: 'برجولات',
+        positive: ['⛱️ برجولات', 'برجولا', 'برجولات', 'برجولة', 'برجولتين'],
+        negative: ['مفيش برجولات', 'بدون برجولات'],
     },
 };
 
@@ -54,11 +59,17 @@ const EXCLUSION_PATTERNS = [
 
 // Get all text from venue for searching
 function getVenueText(venue) {
+    // Convert amenities object to searchable text
+    const amenitiesText = venue.amenities ? Object.entries(venue.amenities)
+        .filter(([k, v]) => v > 0)
+        .map(([k]) => window.SCHEMA?.AMENITY_DISPLAY?.[k]?.name || k)
+        .join(' ') : '';
+
     return [
-        ...(venue.amenities || []),
+        amenitiesText,
         venue.notes || '',
         venue.details || '',
-        venue.status || ''
+        venue.statusCode ? (window.SCHEMA?.STATUS_CODES?.[venue.statusCode]?.text || '') : ''
     ].join(' ');
 }
 
@@ -251,21 +262,27 @@ function prepareSearchQuery(query) {
 // Fuse.js Setup
 // ============================================
 function initFuse() {
-    // Create searchable text for each venue
-    const searchableVenues = venues.map(v => ({
-        ...v,
-        searchText: [
-            v.name,
-            v.location,
-            v.notes,
-            v.details,
-            v.price,
-            v.capacity,
-            ...(v.phones || []).map(p => p.label || p.number),
-            ...(v.amenities || []),
-            ...(v.links || []).map(l => l.label)
-        ].filter(Boolean).join(' ')
-    }));
+    // Create searchable text for each venue (adapted for new schema)
+    const searchableVenues = venues.map(v => {
+        // Convert amenities object to text
+        const amenitiesText = v.amenities ? Object.entries(v.amenities)
+            .filter(([k, val]) => val > 0)
+            .map(([k]) => window.SCHEMA?.AMENITY_DISPLAY?.[k]?.name || k)
+            .join(' ') : '';
+
+        return {
+            ...v,
+            searchText: [
+                v.name,
+                v.location,
+                v.notes,
+                v.details,
+                ...(v.phones || []).map(p => p.name || p.number),
+                amenitiesText,
+                ...(v.links || []).map(l => window.SCHEMA?.LINK_TYPES?.[l.type]?.text || l.type)
+            ].filter(Boolean).join(' ')
+        };
+    });
 
     fuse = new Fuse(searchableVenues, {
         keys: [
@@ -466,53 +483,78 @@ function renderVenues(venuesData) {
             </div>
         `;
 
-        // Phones - inline with label, items align left
+        // Phones - inline with name (new schema)
         const phonesHtml = venue.phones && venue.phones.length > 0 ? `
             <div class="venue-row venue-row-phones">
                 <span class="venue-label">📞 التليفون</span>
                 <div class="phone-items-wrapper">
-                    ${venue.phones.map(p => {
-            const contactName = p.label && p.label !== p.number
-                ? p.label.replace(p.number, '').replace(':', '').trim()
-                : null;
-            return `<a href="tel:${p.number}" class="phone-item">
+                    ${venue.phones.map(p => `<a href="tel:${p.number}" class="phone-item">
                             <span class="phone-number">${p.number}</span>
-                            ${contactName ? `<span class="phone-contact">${contactName}</span>` : ''}
-                        </a>`;
+                            ${p.name ? `<span class="phone-contact">${p.name}</span>` : ''}
+                        </a>`).join('')}
+                </div>
+            </div>
+        ` : '';
+
+        // Links - use type from schema (new schema)
+        const linksHtml = venue.links && venue.links.length > 0 ? `
+            <div class="venue-row venue-row-links">
+                <span class="venue-label">🔗 اللينكات</span>
+                <div class="links-items-wrapper">
+                    ${venue.links.map(l => {
+            const linkInfo = window.SCHEMA?.LINK_TYPES?.[l.type] || {};
+            const label = linkInfo.text || l.type || 'رابط';
+            const icon = linkInfo.icon || '🔗';
+            return `<a href="${l.url}" target="_blank" class="link-item">${icon} ${label}</a>`;
         }).join('')}
                 </div>
             </div>
         ` : '';
 
-        // Links - same layout as phones (label right, items left)
-        const linksHtml = venue.links && venue.links.length > 0 ? `
-            <div class="venue-row venue-row-links">
-                <span class="venue-label">🔗 اللينكات</span>
-                <div class="links-items-wrapper">
-                    ${venue.links.map(l => `<a href="${l.url}" target="_blank" class="link-item">${l.label || 'رابط'}</a>`).join('')}
-                </div>
-            </div>
-        ` : '';
+        // Price - render from new structured pricing object
+        let priceHtml = '';
+        if (venue.pricing) {
+            const priceBadges = [];
+            const periods = { night: '/ليلة', day: '/يوم', hour: '/ساعة' };
+            for (const [type, priceInfo] of Object.entries(venue.pricing)) {
+                if (!priceInfo) continue;
+                let text = '';
+                if (priceInfo.min && priceInfo.max) {
+                    text = `${priceInfo.min}-${priceInfo.max}ج`;
+                } else if (priceInfo.amount) {
+                    text = `${priceInfo.amount}ج`;
+                }
+                if (priceInfo.period) text += periods[priceInfo.period] || '';
+                if (priceInfo.includes && priceInfo.includes.length > 0) {
+                    text += ' شامل';
+                }
+                if (text) priceBadges.push(`<span class="price-badge">${text}</span>`);
+            }
+            if (priceBadges.length > 0) {
+                priceHtml = `
+                    <div class="venue-row venue-row-price">
+                        <span class="venue-label">💰 السعر</span>
+                        <div class="price-items-wrapper">${priceBadges.join('')}</div>
+                    </div>
+                `;
+            }
+        }
 
-        // Price - same layout as phones (label right, items left)
-        const priceHtml = (venue.price && venue.price.length > 0) ? `
-            <div class="venue-row venue-row-price">
-                <span class="venue-label">💰 السعر</span>
-                <div class="price-items-wrapper">
-                    ${venue.price.map(p => `<span class="price-badge">${p}</span>`).join('')}
-                </div>
-            </div>
-        ` : '';
-
-        // Capacity - show as badges
-        const capacityHtml = (venue.capacity && venue.capacity.length > 0) ? `
-            <div class="venue-row venue-row-capacity">
-                <span class="venue-label">👥 السعة</span>
-                <div class="capacity-badges">
-                    ${venue.capacity.map(c => `<span class="capacity-badge">${c}</span>`).join('')}
-                </div>
-            </div>
-        ` : '';
+        // Capacity - render from new structured capacity object
+        let capacityHtml = '';
+        if (venue.capacity) {
+            const capacityBadges = [];
+            if (venue.capacity.camping) capacityBadges.push(`<span class="capacity-badge">~${venue.capacity.camping} فرد</span>`);
+            if (venue.capacity.beds) capacityBadges.push(`<span class="capacity-badge">${venue.capacity.beds} سرير</span>`);
+            if (capacityBadges.length > 0) {
+                capacityHtml = `
+                    <div class="venue-row venue-row-capacity">
+                        <span class="venue-label">👥 السعة</span>
+                        <div class="capacity-badges">${capacityBadges.join('')}</div>
+                    </div>
+                `;
+            }
+        }
 
         // Facilities - use V3 icons if available, fallback to legacy amenities
         const facilityIcons = {
@@ -535,24 +577,27 @@ function renderVenues(venuesData) {
             waterCooler: '💧 كولدير'
         };
 
+        // Amenities - render from new number-based object
         let amenitiesHtml = '';
-        if (venue.facilitiesV3) {
-            const activeF = Object.entries(venue.facilitiesV3)
-                .filter(([k, v]) => v === true && facilityIcons[k])
-                .map(([k]) => facilityIcons[k]);
-            if (activeF.length) {
+        if (venue.amenities && typeof venue.amenities === 'object') {
+            const amenityItems = [];
+            for (const [key, count] of Object.entries(venue.amenities)) {
+                if (count === 0) continue; // Skip if not present
+                const display = window.SCHEMA?.AMENITY_DISPLAY?.[key] || facilityIcons[key];
+                if (!display) continue;
+                const icon = display.icon || '';
+                const name = display.name || key;
+                // 1 = just show icon+name, 2+ = show count
+                const text = count > 1 ? `${icon} ${count} ${name}` : `${icon} ${name}`;
+                amenityItems.push(`<span class="amenity">${text}</span>`);
+            }
+            if (amenityItems.length > 0) {
                 amenitiesHtml = `
                     <div class="amenities">
-                        ${activeF.map(a => `<span class="amenity">${a}</span>`).join('')}
+                        ${amenityItems.join('')}
                     </div>
                 `;
             }
-        } else if (venue.amenities && venue.amenities.length > 0) {
-            amenitiesHtml = `
-                <div class="amenities">
-                    ${venue.amenities.map(a => `<span class="amenity">${a}</span>`).join('')}
-                </div>
-            `;
         }
 
         // Notes
@@ -733,54 +778,84 @@ function setupEventListeners() {
 }
 
 // ============================================
-// Filter Logic with Fuzzy Search + Tab Filtering
+// Filter Logic with Simple Arabic Title Search + Auto Tab Switch
 // ============================================
+let searchTimeout = null;
+
 function filterVenues() {
     const rawQuery = searchInput.value.trim();
+
+    // Update tab counts based on search query
+    updateTabCounts(rawQuery);
 
     // First filter by current tab (qualification status)
     let matchedVenues = venues.filter(v => v._qualification === currentTab);
 
-    // Apply fuzzy search if query exists
-    if (rawQuery.length >= 2 && matchedVenues.length > 0) {
-        const queryData = prepareSearchQuery(rawQuery);
+    // Apply simple Arabic title search if query exists
+    if (rawQuery.length >= 2) {
+        // Simple includes() search on venue name only
+        matchedVenues = matchedVenues.filter(v =>
+            v.name && v.name.includes(rawQuery)
+        );
 
-        // Create a temporary Fuse instance for the filtered venues
-        const tempFuse = new Fuse(matchedVenues, {
-            keys: ['name', 'location', 'notes', 'details', 'amenities', 'price', 'capacity'],
-            threshold: 0.4,
-            ignoreLocation: true,
-            includeScore: true,
-            minMatchCharLength: 2,
-        });
+        // If no results in current tab, check other tabs and auto-switch
+        if (matchedVenues.length === 0) {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                // Search in all venues regardless of tab
+                const allMatches = venues.filter(v =>
+                    v.name && v.name.includes(rawQuery)
+                );
 
-        // Search with all versions of the query
-        const searches = [
-            queryData.original,
-            queryData.normalized,
-            queryData.arabic
-        ].filter(q => q && q.length >= 2);
+                if (allMatches.length > 0) {
+                    // Find which tab has the first match
+                    const firstMatch = allMatches[0];
+                    const targetTab = firstMatch._qualification;
 
-        const allResults = new Map();
-
-        searches.forEach(query => {
-            const results = tempFuse.search(query);
-            results.forEach(r => {
-                const existing = allResults.get(r.item.id);
-                if (!existing || r.score < existing.score) {
-                    allResults.set(r.item.id, r);
+                    if (targetTab && targetTab !== currentTab) {
+                        // Switch to the tab containing the result
+                        const tabBtns = document.querySelectorAll('.tab-btn');
+                        tabBtns.forEach(btn => {
+                            btn.classList.remove('active');
+                            if (btn.dataset.tab === targetTab) {
+                                btn.classList.add('active');
+                            }
+                        });
+                        currentTab = targetTab;
+                        filterVenues(); // Re-filter with new tab
+                    }
                 }
-            });
-        });
-
-        matchedVenues = Array.from(allResults.values())
-            .sort((a, b) => a.score - b.score)
-            .map(r => r.item);
+            }, 500); // 500ms delay before auto-switching
+        }
     }
 
     // Render results
     renderVenues(matchedVenues);
     updateVenueCount(matchedVenues.length);
+}
+
+// Update tab counts based on search query
+function updateTabCounts(query) {
+    const tabs = ['qualified', 'followup', 'excluded'];
+
+    tabs.forEach(tab => {
+        let count;
+        if (query.length >= 2) {
+            // Count venues matching search in this tab
+            count = venues.filter(v =>
+                v._qualification === tab &&
+                v.name && v.name.includes(query)
+            ).length;
+        } else {
+            // No search, count all venues in this tab
+            count = venues.filter(v => v._qualification === tab).length;
+        }
+
+        const countEl = document.getElementById(tab + 'Count');
+        if (countEl) {
+            countEl.textContent = count;
+        }
+    });
 }
 
 // ============================================
@@ -819,37 +894,59 @@ function restoreLocationFilters() {
 // ============================================
 function setupModal() {
     const modal = document.getElementById('imageModal');
-    const closeBtn = modal.querySelector('.modal-close');
-    const prevBtn = modal.querySelector('.modal-prev');
-    const nextBtn = modal.querySelector('.modal-next');
 
-    closeBtn.addEventListener('click', closeModal);
+    // Use event delegation on the modal for all button clicks
     modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
+        // Close when clicking backdrop
+        if (e.target === modal) {
+            closeModal();
+            return;
+        }
 
-    prevBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (modalImages.length === 0) return;
-        modalIndex = (modalIndex - 1 + modalImages.length) % modalImages.length;
-        updateModalImage();
-        syncCarouselToModal(); // Sync card carousel to modal
-    });
+        // Close button
+        if (e.target.classList.contains('modal-close')) {
+            e.stopPropagation();
+            closeModal();
+            return;
+        }
 
-    nextBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (modalImages.length === 0) return;
-        modalIndex = (modalIndex + 1) % modalImages.length;
-        updateModalImage();
-        syncCarouselToModal(); // Sync card carousel to modal
+        // Previous button
+        if (e.target.classList.contains('modal-prev')) {
+            e.stopPropagation();
+            if (modalImages.length === 0) return;
+            modalIndex = (modalIndex - 1 + modalImages.length) % modalImages.length;
+            updateModalImage();
+            syncCarouselToModal();
+            return;
+        }
+
+        // Next button
+        if (e.target.classList.contains('modal-next')) {
+            e.stopPropagation();
+            if (modalImages.length === 0) return;
+            modalIndex = (modalIndex + 1) % modalImages.length;
+            updateModalImage();
+            syncCarouselToModal();
+            return;
+        }
     });
 
     // Keyboard support
     document.addEventListener('keydown', (e) => {
         if (!modal.classList.contains('show')) return;
         if (e.key === 'Escape') closeModal();
-        if (e.key === 'ArrowLeft') prevBtn.click();
-        if (e.key === 'ArrowRight') nextBtn.click();
+        if (e.key === 'ArrowLeft') {
+            if (modalImages.length === 0) return;
+            modalIndex = (modalIndex - 1 + modalImages.length) % modalImages.length;
+            updateModalImage();
+            syncCarouselToModal();
+        }
+        if (e.key === 'ArrowRight') {
+            if (modalImages.length === 0) return;
+            modalIndex = (modalIndex + 1) % modalImages.length;
+            updateModalImage();
+            syncCarouselToModal();
+        }
     });
 }
 
