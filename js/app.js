@@ -20,95 +20,106 @@ let modalIndex = 0;
 let currentModalCardId = null; // Track which card opened the modal
 let fuse = null; // Fuse.js instance
 let currentTab = 'qualified'; // Current active tab
-let activeCriteria = ['hasCampGround', 'hasKitchen', 'hasHalls', 'hasPergolas']; // Currently enabled criteria
+let activeCriteria = []; // No filters active by default - show all venues
 
 // ============================================
 // VENUE QUALIFICATION SYSTEM
 // ============================================
 
-// Criteria detection keywords
+// Criteria definitions - map to amenities object keys
+// Also include patterns to detect explicit "no" in notes
 const CRITERIA = {
     hasCampGround: {
         name: 'أرض معسكر',
-        positive: ['أرض معسكر', 'أرض تخييم', 'أرض كشفية', 'أرض رملية', 'تخييم', '🏕️ أرض'],
-        negative: ['مفيش أرض', 'لا يوجد ارض', 'أرض لا تصلح', 'مفيش تخييم', 'نو تخييم', 'مفيش أرض تخييم', 'مفيش أرض معسكر', 'مفيش أرض كشافة'],
+        amenityKey: 'campground',
+        icon: '🏕️',
+        noPatterns: ['مفيش أرض', 'لا يوجد ارض', 'لا يوجد أرض', 'مفيش تخييم', 'نو تخييم', 'أرض لا تصلح', 'مفيش أرض تخييم', 'مفيش أرض معسكر', 'مفيش أرض كشافة']
     },
     hasKitchen: {
         name: 'مطبخ',
-        positive: ['🍳 مطبخ', 'مطبخ'],
-        negative: ['مفيش مطبخ', 'بدون مطبخ'],
+        amenityKey: 'kitchen',
+        icon: '🍳',
+        noPatterns: ['مفيش مطبخ', 'بدون مطبخ']
     },
     hasHalls: {
         name: 'قاعات',
-        positive: ['🏛️ قاعات', 'قاعة', 'قاعات'],
-        negative: ['مفيش قاعات', 'بدون قاعات', 'مفيش قاعات ولا مبيت'],
+        amenityKey: 'halls',
+        icon: '🏛️',
+        noPatterns: ['مفيش قاعات', 'بدون قاعات', 'مفيش قاعات ولا مبيت', 'لا يوجد قاعات']
     },
     hasPergolas: {
         name: 'برجولات',
-        positive: ['⛱️ برجولات', 'برجولا', 'برجولات', 'برجولة', 'برجولتين'],
-        negative: ['مفيش برجولات', 'بدون برجولات'],
+        amenityKey: 'pergolas',
+        icon: '⛱️',
+        noPatterns: ['مفيش برجولات', 'بدون برجولات']
+    },
+    hasRooms: {
+        name: 'مبيت/غرف',
+        amenityKey: 'rooms',
+        icon: '🛏️',
+        noPatterns: ['مفيش مبيت', 'لا يوجد مبيت', 'مفيش غرف', 'بدون غرف']
+    },
+    hasPools: {
+        name: 'حمام سباحة',
+        amenityKey: 'pools',
+        icon: '🏊',
+        noPatterns: ['مفيش بيسين', 'بدون حمام سباحة']
+    },
+    hasFields: {
+        name: 'ملاعب',
+        amenityKey: 'fields',
+        icon: '⚽',
+        noPatterns: ['مفيش ملاعب', 'بدون ملاعب']
+    },
+    hasSea: {
+        name: 'بحر',
+        amenityKey: 'sea',
+        icon: '🌊',
+        noPatterns: []
     },
 };
 
-// Automatic exclusion patterns
-const EXCLUSION_PATTERNS = [
-    'تحت الإنشاء', 'أرض لا تصلح', 'مفيش أرض معسكر', 'مفيش أرض تخييم',
-    'لا يوجد ارض', 'مفيش تخييم', 'نو تخييم', 'مش بيستقبل معسكرات كشفية',
-    'مفيش بيت', 'مساحة صغيرة', 'المكان صغير', 'مفيش أرض كشافة'
-];
-
-// Get all text from venue for searching
+// Get all text from venue for pattern matching
 function getVenueText(venue) {
-    // Convert amenities object to searchable text
-    const amenitiesText = venue.amenities ? Object.entries(venue.amenities)
-        .filter(([k, v]) => v > 0)
-        .map(([k]) => window.SCHEMA?.AMENITY_DISPLAY?.[k]?.name || k)
-        .join(' ') : '';
-
     return [
-        amenitiesText,
         venue.notes || '',
-        venue.details || '',
-        venue.statusCode ? (window.SCHEMA?.STATUS_CODES?.[venue.statusCode]?.text || '') : ''
+        venue.details || ''
     ].join(' ');
 }
 
-// Check if venue has exclusion reason
-function checkExclusion(venue) {
-    const text = getVenueText(venue);
-    for (const pattern of EXCLUSION_PATTERNS) {
-        if (text.includes(pattern)) return pattern;
-    }
-    return null;
-}
-
-// Check single criterion (returns true/false/null)
+// Check single criterion based on amenities data + notes
+// Returns: true = has it, false = confirmed doesn't have, null = unknown
 function checkCriterion(venue, criterionKey) {
-    const text = getVenueText(venue);
     const criterion = CRITERIA[criterionKey];
+    if (!criterion || !criterion.amenityKey) return null;
 
-    for (const neg of criterion.negative) {
-        if (text.includes(neg)) return false;
+    // First check: amenities object for positive values
+    if (venue.amenities && typeof venue.amenities === 'object') {
+        const value = venue.amenities[criterion.amenityKey];
+        if (value > 0) return true; // Confirmed has it
     }
-    for (const pos of criterion.positive) {
-        if (text.includes(pos)) return true;
+
+    // Second check: look for explicit "no" patterns in notes/details
+    const text = getVenueText(venue);
+    if (criterion.noPatterns && criterion.noPatterns.length > 0) {
+        for (const pattern of criterion.noPatterns) {
+            if (text.includes(pattern)) {
+                return false; // Confirmed doesn't have it
+            }
+        }
     }
-    return null; // Unknown
+
+    // No positive data and no explicit "no" → unknown
+    return null;
 }
 
 // Qualify a venue (returns 'qualified', 'followup', or 'excluded')
 function qualifyVenue(venue) {
-    // Check for exclusion patterns first
-    const exclusion = checkExclusion(venue);
-    if (exclusion) {
-        venue._qualification = 'excluded';
-        venue._exclusionReason = exclusion;
-        return 'excluded';
-    }
-
-    // If no criteria are active, everything is qualified
+    // If no criteria are active, ALL venues are qualified
     if (activeCriteria.length === 0) {
         venue._qualification = 'qualified';
+        venue._criteria = {};
+        venue._exclusionReason = null;
         return 'qualified';
     }
 
@@ -136,18 +147,20 @@ function qualifyVenue(venue) {
     // If any active criterion explicitly fails, exclude
     if (anyFailed) {
         venue._qualification = 'excluded';
-        venue._exclusionReason = 'Missing: ' + missing.join(', ');
+        venue._exclusionReason = 'لا يوجد: ' + missing.join('، ');
         return 'excluded';
     }
 
     // If all active criteria met, qualified
     if (allMet) {
         venue._qualification = 'qualified';
+        venue._exclusionReason = null;
         return 'qualified';
     }
 
-    // Otherwise, needs follow-up
+    // Otherwise, needs follow-up (some criteria unknown)
     venue._qualification = 'followup';
+    venue._exclusionReason = null;
     return 'followup';
 }
 
@@ -303,29 +316,33 @@ function initFuse() {
 // Initialize
 // ============================================
 function init() {
-    // Show skeleton loading first
-    showSkeletonLoading();
+    try {
+        // Show skeleton loading first
+        showSkeletonLoading();
+    } catch (e) { }
 
     // Delay actual content for perceived performance
     setTimeout(() => {
-        // Qualify all venues first
-        const { qualified, followup, excluded } = qualifyAllVenues();
+        try {
+            // Qualify all venues first
+            const { qualified, followup, excluded } = qualifyAllVenues();
 
-        // Update tab counts
-        document.getElementById('qualifiedCount').textContent = qualified.length;
-        document.getElementById('followupCount').textContent = followup.length;
-        document.getElementById('excludedCount').textContent = excluded.length;
+            // Update tab counts
+            document.getElementById('qualifiedCount').textContent = qualified.length;
+            document.getElementById('followupCount').textContent = followup.length;
+            document.getElementById('excludedCount').textContent = excluded.length;
 
-        initFuse();
-        setupTabListeners();
-        setupSettings();
-        filterVenues(); // Renders venues based on current tab
-        setupEventListeners();
-        setupModal();
-        updateLastUpdated();
-        restoreScrollPosition();
-        restoreCarouselStates();
-        setupScrollPersistence();
+            initFuse();
+            setupTabListeners();
+            setupSettings();
+            filterVenues(); // Renders venues based on current tab
+            setupEventListeners();
+            setupModal();
+            updateLastUpdated();
+            restoreScrollPosition();
+            restoreCarouselStates();
+            setupScrollPersistence();
+        } catch (e) { }
     }, 300);
 }
 
@@ -744,33 +761,42 @@ function setupCarousel(card, cardId, totalSlides) {
 // Event Listeners
 // ============================================
 function setupEventListeners() {
-    searchInput.addEventListener('input', filterVenues);
+    // Search input
+    if (searchInput) {
+        searchInput.addEventListener('input', filterVenues);
+    }
 
-    // Location Filter Toggle
+    // Location Filter Toggle (optional element)
     const filterToggle = document.getElementById('filterToggle');
-    filterToggle.addEventListener('click', () => {
-        const checkboxes = document.getElementById('locCheckboxes');
-        checkboxes.classList.toggle('hidden');
-        const isHidden = checkboxes.classList.contains('hidden');
-        filterToggle.textContent = isHidden ? '📍 فلتر المواقع ▶' : '📍 فلتر المواقع ▼';
-        filterToggle.classList.toggle('active', !isHidden);
-    });
-
-    // Checkboxes
-    const selectAll = document.getElementById('selectAllLocs');
-    selectAll.addEventListener('change', (e) => {
-        document.querySelectorAll('.loc-checkbox:not(.select-all) input').forEach(cb => {
-            cb.checked = e.target.checked;
+    if (filterToggle) {
+        filterToggle.addEventListener('click', () => {
+            const checkboxes = document.getElementById('locCheckboxes');
+            if (checkboxes) {
+                checkboxes.classList.toggle('hidden');
+                const isHidden = checkboxes.classList.contains('hidden');
+                filterToggle.textContent = isHidden ? '📍 فلتر المواقع ▶' : '📍 فلتر المواقع ▼';
+                filterToggle.classList.toggle('active', !isHidden);
+            }
         });
-        saveLocationFilters();
-        filterVenues();
-    });
+    }
+
+    // Checkboxes (optional elements)
+    const selectAll = document.getElementById('selectAllLocs');
+    if (selectAll) {
+        selectAll.addEventListener('change', (e) => {
+            document.querySelectorAll('.loc-checkbox:not(.select-all) input').forEach(cb => {
+                cb.checked = e.target.checked;
+            });
+            saveLocationFilters();
+            filterVenues();
+        });
+    }
 
     document.querySelectorAll('.loc-checkbox:not(.select-all) input').forEach(cb => {
         cb.addEventListener('change', () => {
             const allDocs = document.querySelectorAll('.loc-checkbox:not(.select-all) input');
             const allChecked = Array.from(allDocs).every(c => c.checked);
-            selectAll.checked = allChecked;
+            if (selectAll) selectAll.checked = allChecked;
             saveLocationFilters();
             filterVenues();
         });
@@ -894,42 +920,46 @@ function restoreLocationFilters() {
 // ============================================
 function setupModal() {
     const modal = document.getElementById('imageModal');
+    if (!modal) return;
 
-    // Use event delegation on the modal for all button clicks
+    const closeBtn = modal.querySelector('.modal-close');
+    const prevBtn = modal.querySelector('.modal-prev');
+    const nextBtn = modal.querySelector('.modal-next');
+
+    // Close when clicking backdrop (the modal background itself)
     modal.addEventListener('click', (e) => {
-        // Close when clicking backdrop
-        if (e.target === modal) {
-            closeModal();
-            return;
-        }
+        if (e.target === modal) closeModal();
+    });
 
-        // Close button
-        if (e.target.classList.contains('modal-close')) {
+    // Direct event listener on close button
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             closeModal();
-            return;
-        }
+        });
+    }
 
-        // Previous button
-        if (e.target.classList.contains('modal-prev')) {
+    // Direct event listener on prev button
+    if (prevBtn) {
+        prevBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (modalImages.length === 0) return;
             modalIndex = (modalIndex - 1 + modalImages.length) % modalImages.length;
             updateModalImage();
             syncCarouselToModal();
-            return;
-        }
+        });
+    }
 
-        // Next button
-        if (e.target.classList.contains('modal-next')) {
+    // Direct event listener on next button
+    if (nextBtn) {
+        nextBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (modalImages.length === 0) return;
             modalIndex = (modalIndex + 1) % modalImages.length;
             updateModalImage();
             syncCarouselToModal();
-            return;
-        }
-    });
+        });
+    }
 
     // Keyboard support
     document.addEventListener('keydown', (e) => {

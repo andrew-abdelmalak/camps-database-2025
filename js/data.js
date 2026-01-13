@@ -644,13 +644,13 @@ window.venues = [
     },
     "amenities": {
       "campground": 1,
-      "rooms": 0,
+      "rooms": 1,
       "kitchen": 1,
-      "bathrooms": 0,
+      "bathrooms": 1,
       "church": 0,
-      "halls": 0,
-      "pergolas": 0,
-      "pools": 0,
+      "halls": 1,
+      "pergolas": 1,
+      "pools": 1,
       "fields": 1,
       "ac": 0,
       "cooler": 0,
@@ -715,27 +715,37 @@ window.venues = [
       "outcome": "answered",
       "notes": null
     },
-    "pricing": null,
-    "capacity": null,
+    "pricing": {
+      "rooms": {
+        "min": 350,
+        "max": 400,
+        "period": "night",
+        "includes": ["full board", "pool"]
+      }
+    },
+    "capacity": {
+      "camping": null,
+      "beds": 150
+    },
     "amenities": {
       "campground": 0,
       "rooms": 1,
-      "kitchen": 0,
-      "bathrooms": 0,
+      "kitchen": 1,
+      "bathrooms": 1,
       "church": 0,
-      "halls": 0,
+      "halls": 1,
       "pergolas": 0,
-      "pools": 0,
+      "pools": 1,
       "fields": 1,
       "ac": 0,
       "cooler": 0,
       "playground": 0,
-      "canteen": 0,
+      "canteen": 1,
       "sea": 0
     },
     "notes": "بيت الملكة نو تخييم. تم الاتصال 1/1/2026.",
     "notesType": "",
-    "details": null,
+    "details": "350ج للمجموعات أكثر من 40 فرد (Full Board + 3 ساعات بيسين). 400ج للأفراد/العائلات (Full Board + بيسين طول اليوم). الأطفال 250ج. إيميل: kerokero574@gmail.com",
     "images": [],
     "availability": {
       "2026-07-02": null,

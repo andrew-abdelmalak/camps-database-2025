@@ -1300,6 +1300,7 @@ h1 {
     z-index: 1010;
     opacity: 0.8;
     transition: opacity 0.2s;
+    pointer-events: auto;
 }
 
 .modal-close:hover {
@@ -1319,6 +1320,7 @@ h1 {
     border-radius: var(--radius-md);
     z-index: 1010;
     transition: background 0.2s;
+    pointer-events: auto;
 }
 
 .modal-prev {
