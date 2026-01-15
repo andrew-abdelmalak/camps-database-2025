@@ -19,166 +19,15 @@ let modalImages = [];
 let modalIndex = 0;
 let currentModalCardId = null; // Track which card opened the modal
 let fuse = null; // Fuse.js instance
-let currentTab = 'qualified'; // Current active tab
-let activeCriteria = []; // No filters active by default - show all venues
+let currentTab = 'favorites'; // Current active tab - default to favorites
+
+// Favorite venue IDs (the 4 shortlisted venues)
+const FAVORITE_IDS = ['17', '42', '25', '26'];
 
 // ============================================
-// VENUE QUALIFICATION SYSTEM
+// VENUE QUALIFICATION SYSTEM (REMOVED)
+// Now using simple favorites-based tabs instead
 // ============================================
-
-// Criteria definitions - map to amenities object keys
-// Also include patterns to detect explicit "no" in notes
-const CRITERIA = {
-    hasCampGround: {
-        name: 'أرض معسكر',
-        amenityKey: 'campground',
-        icon: '🏕️',
-        noPatterns: ['مفيش أرض', 'لا يوجد ارض', 'لا يوجد أرض', 'مفيش تخييم', 'نو تخييم', 'أرض لا تصلح', 'مفيش أرض تخييم', 'مفيش أرض معسكر', 'مفيش أرض كشافة']
-    },
-    hasKitchen: {
-        name: 'مطبخ',
-        amenityKey: 'kitchen',
-        icon: '🍳',
-        noPatterns: ['مفيش مطبخ', 'بدون مطبخ']
-    },
-    hasHalls: {
-        name: 'قاعات',
-        amenityKey: 'halls',
-        icon: '🏛️',
-        noPatterns: ['مفيش قاعات', 'بدون قاعات', 'مفيش قاعات ولا مبيت', 'لا يوجد قاعات']
-    },
-    hasPergolas: {
-        name: 'برجولات',
-        amenityKey: 'pergolas',
-        icon: '⛱️',
-        noPatterns: ['مفيش برجولات', 'بدون برجولات']
-    },
-    hasRooms: {
-        name: 'مبيت/غرف',
-        amenityKey: 'rooms',
-        icon: '🛏️',
-        noPatterns: ['مفيش مبيت', 'لا يوجد مبيت', 'مفيش غرف', 'بدون غرف']
-    },
-    hasPools: {
-        name: 'حمام سباحة',
-        amenityKey: 'pools',
-        icon: '🏊',
-        noPatterns: ['مفيش بيسين', 'بدون حمام سباحة']
-    },
-    hasFields: {
-        name: 'ملاعب',
-        amenityKey: 'fields',
-        icon: '⚽',
-        noPatterns: ['مفيش ملاعب', 'بدون ملاعب']
-    },
-    hasSea: {
-        name: 'بحر',
-        amenityKey: 'sea',
-        icon: '🌊',
-        noPatterns: []
-    },
-};
-
-// Get all text from venue for pattern matching
-function getVenueText(venue) {
-    return [
-        venue.notes || '',
-        venue.details || ''
-    ].join(' ');
-}
-
-// Check single criterion based on amenities data + notes
-// Returns: true = has it, false = confirmed doesn't have, null = unknown
-function checkCriterion(venue, criterionKey) {
-    const criterion = CRITERIA[criterionKey];
-    if (!criterion || !criterion.amenityKey) return null;
-
-    // First check: amenities object for positive values
-    if (venue.amenities && typeof venue.amenities === 'object') {
-        const value = venue.amenities[criterion.amenityKey];
-        if (value > 0) return true; // Confirmed has it
-    }
-
-    // Second check: look for explicit "no" patterns in notes/details
-    const text = getVenueText(venue);
-    if (criterion.noPatterns && criterion.noPatterns.length > 0) {
-        for (const pattern of criterion.noPatterns) {
-            if (text.includes(pattern)) {
-                return false; // Confirmed doesn't have it
-            }
-        }
-    }
-
-    // No positive data and no explicit "no" → unknown
-    return null;
-}
-
-// Qualify a venue (returns 'qualified', 'followup', or 'excluded')
-function qualifyVenue(venue) {
-    // If no criteria are active, ALL venues are qualified
-    if (activeCriteria.length === 0) {
-        venue._qualification = 'qualified';
-        venue._criteria = {};
-        venue._exclusionReason = null;
-        return 'qualified';
-    }
-
-    // Check each active criterion
-    const criteriaResults = {};
-    let anyFailed = false;
-    let allMet = true;
-    const missing = [];
-
-    for (const criterionKey of activeCriteria) {
-        const result = checkCriterion(venue, criterionKey);
-        criteriaResults[criterionKey] = result;
-
-        if (result === false) {
-            anyFailed = true;
-            missing.push(CRITERIA[criterionKey].name);
-        }
-        if (result !== true) {
-            allMet = false;
-        }
-    }
-
-    venue._criteria = criteriaResults;
-
-    // If any active criterion explicitly fails, exclude
-    if (anyFailed) {
-        venue._qualification = 'excluded';
-        venue._exclusionReason = 'لا يوجد: ' + missing.join('، ');
-        return 'excluded';
-    }
-
-    // If all active criteria met, qualified
-    if (allMet) {
-        venue._qualification = 'qualified';
-        venue._exclusionReason = null;
-        return 'qualified';
-    }
-
-    // Otherwise, needs follow-up (some criteria unknown)
-    venue._qualification = 'followup';
-    venue._exclusionReason = null;
-    return 'followup';
-}
-
-// Qualify all venues and return categorized lists
-function qualifyAllVenues() {
-    const qualified = [];
-    const followup = [];
-    const excluded = [];
-
-    for (const venue of venues) {
-        const result = qualifyVenue(venue);
-        if (result === 'qualified') qualified.push(venue);
-        else if (result === 'excluded') excluded.push(venue);
-        else followup.push(venue);
-    }
-
-    return { qualified, followup, excluded };
-}
 
 // ============================================
 // ARABIZI (Franco-Arab) to Arabic Mapping
@@ -324,17 +173,16 @@ function init() {
     // Delay actual content for perceived performance
     setTimeout(() => {
         try {
-            // Qualify all venues first
-            const { qualified, followup, excluded } = qualifyAllVenues();
+            // Count favorites and rest
+            const favorites = venues.filter(v => FAVORITE_IDS.includes(v.id));
+            const rest = venues.filter(v => !FAVORITE_IDS.includes(v.id));
 
             // Update tab counts
-            document.getElementById('qualifiedCount').textContent = qualified.length;
-            document.getElementById('followupCount').textContent = followup.length;
-            document.getElementById('excludedCount').textContent = excluded.length;
+            document.getElementById('favoritesCount').textContent = favorites.length;
+            document.getElementById('restCount').textContent = rest.length;
 
             initFuse();
             setupTabListeners();
-            setupSettings();
             filterVenues(); // Renders venues based on current tab
             setupEventListeners();
             setupModal();
@@ -359,41 +207,6 @@ function setupTabListeners() {
             currentTab = btn.dataset.tab;
 
             // Re-filter venues
-            filterVenues();
-        });
-    });
-}
-
-// Settings panel
-function setupSettings() {
-    const settingsToggle = document.getElementById('settingsToggle');
-    const settingsContent = document.getElementById('settingsContent');
-    const criteriaCheckboxes = document.querySelectorAll('#criteriaCheckboxes input[type="checkbox"]');
-
-    // Toggle settings panel
-    settingsToggle.addEventListener('click', () => {
-        settingsContent.classList.toggle('hidden');
-        settingsToggle.classList.toggle('active');
-    });
-
-    // Handle criteria checkbox changes
-    criteriaCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', () => {
-            // Update activeCriteria array
-            activeCriteria = Array.from(criteriaCheckboxes)
-                .filter(cb => cb.checked)
-                .map(cb => cb.value);
-
-            // Update checkbox label styling
-            checkbox.parentElement.classList.toggle('checked', checkbox.checked);
-
-            // Requalify all venues and update counts
-            const { qualified, followup, excluded } = qualifyAllVenues();
-            document.getElementById('qualifiedCount').textContent = qualified.length;
-            document.getElementById('followupCount').textContent = followup.length;
-            document.getElementById('excludedCount').textContent = excluded.length;
-
-            // Re-render current tab
             filterVenues();
         });
     });
@@ -627,37 +440,6 @@ function renderVenues(venuesData) {
             <div class="details">${venue.details}</div>
         ` : '';
 
-        // Criteria Checklist - show what's confirmed/unknown/missing
-        let criteriaHtml = '';
-        if (venue._qualification === 'followup' && venue._criteria) {
-            const criteriaItems = [];
-            for (const key of activeCriteria) {
-                const status = venue._criteria[key];
-                const name = CRITERIA[key]?.name || key;
-                if (status === true) {
-                    criteriaItems.push(`<span class="criteria-status criteria-ok">✓ ${name}</span>`);
-                } else if (status === null) {
-                    criteriaItems.push(`<span class="criteria-status criteria-unknown">❓ ${name}</span>`);
-                }
-            }
-            if (criteriaItems.length > 0) {
-                criteriaHtml = `
-                    <div class="criteria-checklist">
-                        <div class="criteria-header">📋 التحقق المطلوب:</div>
-                        <div class="criteria-items">${criteriaItems.join('')}</div>
-                    </div>
-                `;
-            }
-        }
-        // Show exclusion reason for excluded venues
-        if (venue._qualification === 'excluded' && venue._exclusionReason) {
-            criteriaHtml = `
-                <div class="exclusion-reason">
-                    <span>❌ ${venue._exclusionReason}</span>
-                </div>
-            `;
-        }
-
         card.innerHTML = `
             ${headerHtml}
             <div class="card-body">
@@ -668,7 +450,6 @@ function renderVenues(venuesData) {
                 ${priceHtml}
                 ${capacityHtml}
                 ${amenitiesHtml}
-                ${criteriaHtml}
                 ${notesHtml}
                 ${detailsHtml}
             </div>
@@ -814,8 +595,13 @@ function filterVenues() {
     // Update tab counts based on search query
     updateTabCounts(rawQuery);
 
-    // First filter by current tab (qualification status)
-    let matchedVenues = venues.filter(v => v._qualification === currentTab);
+    // First filter by current tab (favorites or rest)
+    let matchedVenues;
+    if (currentTab === 'favorites') {
+        matchedVenues = venues.filter(v => FAVORITE_IDS.includes(v.id));
+    } else {
+        matchedVenues = venues.filter(v => !FAVORITE_IDS.includes(v.id));
+    }
 
     // Apply simple Arabic title search if query exists
     if (rawQuery.length >= 2) {
@@ -836,9 +622,10 @@ function filterVenues() {
                 if (allMatches.length > 0) {
                     // Find which tab has the first match
                     const firstMatch = allMatches[0];
-                    const targetTab = firstMatch._qualification;
+                    const isFavorite = FAVORITE_IDS.includes(firstMatch.id);
+                    const targetTab = isFavorite ? 'favorites' : 'rest';
 
-                    if (targetTab && targetTab !== currentTab) {
+                    if (targetTab !== currentTab) {
                         // Switch to the tab containing the result
                         const tabBtns = document.querySelectorAll('.tab-btn');
                         tabBtns.forEach(btn => {
@@ -862,26 +649,28 @@ function filterVenues() {
 
 // Update tab counts based on search query
 function updateTabCounts(query) {
-    const tabs = ['qualified', 'followup', 'excluded'];
+    let favoritesCount, restCount;
 
-    tabs.forEach(tab => {
-        let count;
-        if (query.length >= 2) {
-            // Count venues matching search in this tab
-            count = venues.filter(v =>
-                v._qualification === tab &&
-                v.name && v.name.includes(query)
-            ).length;
-        } else {
-            // No search, count all venues in this tab
-            count = venues.filter(v => v._qualification === tab).length;
-        }
+    if (query.length >= 2) {
+        // Count venues matching search in each tab
+        favoritesCount = venues.filter(v =>
+            FAVORITE_IDS.includes(v.id) &&
+            v.name && v.name.includes(query)
+        ).length;
+        restCount = venues.filter(v =>
+            !FAVORITE_IDS.includes(v.id) &&
+            v.name && v.name.includes(query)
+        ).length;
+    } else {
+        // No search, count all venues in each tab
+        favoritesCount = venues.filter(v => FAVORITE_IDS.includes(v.id)).length;
+        restCount = venues.filter(v => !FAVORITE_IDS.includes(v.id)).length;
+    }
 
-        const countEl = document.getElementById(tab + 'Count');
-        if (countEl) {
-            countEl.textContent = count;
-        }
-    });
+    const favCountEl = document.getElementById('favoritesCount');
+    const restCountEl = document.getElementById('restCount');
+    if (favCountEl) favCountEl.textContent = favoritesCount;
+    if (restCountEl) restCountEl.textContent = restCount;
 }
 
 // ============================================
