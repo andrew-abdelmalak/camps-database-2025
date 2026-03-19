@@ -1,10 +1,41 @@
-# 🏕️ Camp Venues Database — دليل بيوت المعسكرات
+# Camp Venues Database — دليل بيوت المعسكرات
+
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Language: JavaScript](https://img.shields.io/badge/Language-JavaScript-f7df1e.svg)
+![Deployment: GitHub Pages](https://img.shields.io/badge/Deployment-GitHub%20Pages-blue.svg)
 
 A responsive, offline-first web application for browsing, filtering, and comparing camp venues. Built for the 2025 Camps Committee of the Virgin Mary & St. George Church, Madinaty (كنيسة العذراء ومارجرجس بمدينتي).
 
 ---
 
-## ✨ Features
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Key Features](#key-features)
+3. [Repository Structure](#repository-structure)
+4. [Getting Started](#getting-started)
+5. [Data Schema](#data-schema)
+6. [Adding or Editing Venues](#adding-or-editing-venues)
+7. [Authors](#authors)
+8. [Acknowledgments](#acknowledgments)
+9. [License](#license)
+
+---
+
+## Overview
+
+| Property | Value |
+|----------|-------|
+| Language | HTML / CSS / JavaScript (ES6+) |
+| Dependencies | Zero — runs entirely in the browser |
+| Total Venues | 62 |
+| Shortlisted | 4 venues (IDs: 17, 42, 25, 26) |
+| Last Updated | March 2026 |
+| Deployment | GitHub Pages (static, no server) |
+
+---
+
+## Key Features
 
 | Feature | Details |
 |---------|---------|
@@ -18,7 +49,7 @@ A responsive, offline-first web application for browsing, filtering, and compari
 
 ---
 
-## 📂 Project Structure
+## Repository Structure
 
 ```
 camps-database-2025/
@@ -38,7 +69,7 @@ camps-database-2025/
 
 ---
 
-## 🚀 Quick Start
+## Getting Started
 
 No build step required.
 
@@ -57,7 +88,7 @@ Or simply double-click `index.html` in your file manager.
 
 ---
 
-## 📊 Data Schema
+## Data Schema
 
 Each venue in `js/data.js` follows this normalised structure:
 
@@ -91,7 +122,7 @@ Amenity values: `0` = absent, `1` = present, `2+` = count (e.g. number of halls)
 
 ---
 
-## 🔧 Adding or Editing Venues
+## Adding or Editing Venues
 
 Edit `js/data.js` directly. Key rules:
 - `id` must be unique and match the folder name under `images/`.
@@ -117,21 +148,20 @@ Available `statusCode` values:
 
 ---
 
-## 📈 Database Stats
+## Authors
 
-- **Total Venues:** 62
-- **Shortlisted (Favourites):** 4 venues (IDs: 17, 42, 25, 26)
-- **Last Updated:** March 2026
-
----
-
-## 👤 Author
-
-**Andrew Abdelmalak**
-Camps Committee, Virgin Mary & St. George Church, Madinaty — 2025
+| Name | Affiliation |
+|------|-------------|
+| Andrew Abdelmalak | Camps Committee, Virgin Mary & St. George Church, Madinaty — 2025 |
 
 ---
 
-## 📄 License
+## Acknowledgments
 
-This project is licensed under the [MIT License](LICENSE).
+Built for the **2025 Camps Committee** of the Virgin Mary & St. George Church, Madinaty (كنيسة العذراء ومارجرجس بمدينتي). Developed to support the annual process of surveying, contacting, and shortlisting camp venues for church group activities.
+
+---
+
+## License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for details.
