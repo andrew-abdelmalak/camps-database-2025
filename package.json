@@ -2,7 +2,22 @@
   "name": "camps-database-2025",
   "private": true,
   "version": "1.0.0",
+  "description": "Offline-first React and TypeScript app for browsing and comparing camp venues, published on GitHub Pages.",
   "type": "module",
+  "homepage": "https://andrew-abdelmalak.github.io/camps-database-2025/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andrew-abdelmalak/camps-database-2025.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "react",
+    "typescript",
+    "vite",
+    "github-pages",
+    "camp-database",
+    "venue-directory"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

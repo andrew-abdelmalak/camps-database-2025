@@ -1,6 +1,6 @@
 # Camps Database 2025
 
-Offline-first React app for browsing camp venues for the 2025 Camps Committee of Virgin Mary and St. George Church, Madinaty.
+Offline-first React app for browsing and comparing camp venues for the 2025 Camps Committee of Virgin Mary and St. George Church, Madinaty.
 
 [![Deployment: GitHub Pages](https://img.shields.io/badge/Deployment-GitHub%20Pages-blue.svg)](https://andrew-abdelmalak.github.io/camps-database-2025/)
 [![Language: TypeScript](https://img.shields.io/badge/Language-TypeScript-3178c6.svg)](https://www.typescriptlang.org/)
@@ -24,6 +24,20 @@ Offline-first React app for browsing camp venues for the 2025 Camps Committee of
 - Per-venue image carousel with fullscreen image viewer.
 - Scroll and carousel position restoration through `localStorage`.
 - Typed display/config modules for locations, labels, pricing, and layout.
+
+## Maintenance
+
+- Canonical branch: `main`
+- Canonical dataset: `src/data/venues.json`
+- Runtime validation boundary: `src/data/venues.ts`
+- Published site: [andrew-abdelmalak.github.io/camps-database-2025](https://andrew-abdelmalak.github.io/camps-database-2025/)
+
+## Architecture Notes
+
+- State is intentionally local. `App.tsx` owns transient UI state, and `useVenues` owns the read-only filtering pipeline. Context or external state libraries are intentionally omitted because the app is a single-view SPA with static data.
+- The UI is config-driven. Display labels, location styling, layout breakpoints, and asset path handling are centralized under `src/config/` and `src/utils/`.
+- Venue data is validated at the import boundary before React components consume it.
+- The project currently has no test runner installed. If automated tests are added later, the highest-value starting points are `useVenues`, config helpers such as `formatPrice` and `getColumnCount`, and asset utilities.
 
 ## Getting Started
 

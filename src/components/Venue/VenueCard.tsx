@@ -1,7 +1,14 @@
+import { memo, useMemo } from "react";
 import type { Venue } from "@/types";
+import { ImageCarousel } from "@/components/Media/ImageCarousel";
 import { getLocationGradient } from "@/config/locations.config";
-import { AMENITY_DISPLAY, LINK_DISPLAY, PRICE_PERIODS, PRICE_TYPES, CAPACITY_TYPES } from "@/config/display.config";
-import { ImageCarousel } from "../Media/ImageCarousel";
+import {
+    CAPACITY_TYPES,
+    LINK_DISPLAY,
+    PRICE_TYPES,
+    formatAmenity,
+    formatPrice,
+} from "@/config/display.config";
 
 interface VenueCardProps {
     venue: Venue;
@@ -10,122 +17,101 @@ interface VenueCardProps {
     onImageClick?: (images: string[], index: number, venueId: string) => void;
 }
 
-export function VenueCard({ venue, carouselIndex, onCarouselChange, onImageClick }: VenueCardProps) {
-    const headerStyle = {
-        background: getLocationGradient(venue.location),
-    };
+function PriceSection({ pricing }: { pricing: Venue["pricing"] }) {
+    if (!pricing) return null;
 
-    // Format price badges
-    const renderPriceBadges = () => {
-        if (!venue.pricing) return null;
+    const badges = Object.entries(pricing).flatMap(([priceType, priceInfo]) => {
+        if (!priceInfo) return [];
 
-        const badges: string[] = [];
-        for (const [priceType, priceInfo] of Object.entries(venue.pricing)) {
-            if (!priceInfo) continue;
-
-            // Get Arabic label for this price type
-            const typeLabel = PRICE_TYPES[priceType] || '';
-
-            let text = '';
-            if (priceInfo.min !== undefined && priceInfo.max !== undefined) {
-                text = `${priceInfo.min}-${priceInfo.max}ج`;
-            } else if (priceInfo.amount !== undefined) {
-                text = `${priceInfo.amount}ج`;
-            }
-
-            if (priceInfo.period && PRICE_PERIODS[priceInfo.period]) {
-                text += PRICE_PERIODS[priceInfo.period];
-            }
-
-            if (priceInfo.includes && priceInfo.includes.length > 0) {
-                text += ' شامل';
-            }
-
-            // Add label prefix if available
-            if (typeLabel && text) {
-                text = `${typeLabel}: ${text}`;
-            }
-
-            if (text) badges.push(text);
-        }
-
-        if (badges.length === 0) return null;
-
-        return (
-            <div className="venue-row venue-row-price">
-                <span className="venue-label">💰 السعر</span>
-                <div className="price-items-wrapper">
-                    {badges.map((badge, i) => (
-                        <span key={i} className="price-badge">{badge}</span>
-                    ))}
-                </div>
-            </div>
+        const formattedPrice = formatPrice(
+            priceInfo.amount,
+            priceInfo.min,
+            priceInfo.max,
+            priceInfo.period,
+            priceInfo.includes,
         );
-    };
 
-    // Format capacity badges
-    const renderCapacity = () => {
-        if (!venue.capacity) return null;
+        if (!formattedPrice) return [];
 
-        const badges: string[] = [];
+        const typeLabel = PRICE_TYPES[priceType] || "";
+        const badge = typeLabel ? `${typeLabel}: ${formattedPrice}` : formattedPrice;
+        return [{ key: `${priceType}-${badge}`, badge }];
+    });
 
-        for (const [capacityType, value] of Object.entries(venue.capacity)) {
-            if (!value) continue;
-            const typeInfo = CAPACITY_TYPES[capacityType];
-            if (typeInfo) {
-                badges.push(`${typeInfo.label}: ~${value} ${typeInfo.unit}`);
-            }
-        }
+    if (badges.length === 0) return null;
 
-        if (badges.length === 0) return null;
-
-        return (
-            <div className="venue-row venue-row-capacity">
-                <span className="venue-label">👥 السعة</span>
-                <div className="capacity-badges">
-                    {badges.map((badge, i) => (
-                        <span key={i} className="capacity-badge">{badge}</span>
-                    ))}
-                </div>
-            </div>
-        );
-    };
-
-    // Format amenities
-    const renderAmenities = () => {
-        const items: string[] = [];
-
-        for (const [key, count] of Object.entries(venue.amenities)) {
-            if (count === 0) continue;
-            const display = AMENITY_DISPLAY[key];
-            if (!display) continue;
-
-            const text = count > 1
-                ? `${display.icon} ${count} ${display.name}`
-                : `${display.icon} ${display.name}`;
-            items.push(text);
-        }
-
-        if (items.length === 0) return null;
-
-        return (
-            <div className="amenities">
-                {items.map((item, i) => (
-                    <span key={i} className="amenity">{item}</span>
+    return (
+        <div className="venue-row venue-row-price">
+            <span className="venue-label">💰 السعر</span>
+            <div className="price-items-wrapper">
+                {badges.map(({ key, badge }) => (
+                    <span key={key} className="price-badge">{badge}</span>
                 ))}
             </div>
-        );
-    };
+        </div>
+    );
+}
+
+function CapacitySection({ capacity }: { capacity: Venue["capacity"] }) {
+    if (!capacity) return null;
+
+    const badges = Object.entries(capacity).flatMap(([capacityType, value]) => {
+        if (value === null) return [];
+        const typeInfo = CAPACITY_TYPES[capacityType];
+        return typeInfo
+            ? [{ key: `${capacityType}-${value}`, badge: `${typeInfo.label}: ~${value} ${typeInfo.unit}` }]
+            : [];
+    });
+
+    if (badges.length === 0) return null;
+
+    return (
+        <div className="venue-row venue-row-capacity">
+            <span className="venue-label">👥 السعة</span>
+            <div className="capacity-badges">
+                {badges.map(({ key, badge }) => (
+                    <span key={key} className="capacity-badge">{badge}</span>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function AmenitiesSection({ amenities }: { amenities: Venue["amenities"] }) {
+    const items = Object.entries(amenities).flatMap(([key, count]) => {
+        const text = formatAmenity(key, count);
+        return text ? [{ key: `${key}-${text}`, text }] : [];
+    });
+
+    if (items.length === 0) return null;
+
+    return (
+        <div className="amenities">
+            {items.map(({ key, text }) => (
+                <span key={key} className="amenity">{text}</span>
+            ))}
+        </div>
+    );
+}
+
+export const VenueCard = memo(function VenueCard({
+    venue,
+    carouselIndex,
+    onCarouselChange,
+    onImageClick,
+}: VenueCardProps) {
+    const headerStyle = useMemo(
+        () => ({ background: getLocationGradient(venue.location) }),
+        [venue.location],
+    );
 
     return (
         <div className="venue-card" id={`card-${venue.id}`}>
-            {/* Header with dynamic location color */}
             <div className="card-header" style={headerStyle}>
                 <h3 className="venue-name">{venue.name}</h3>
             </div>
 
             <div className="card-body">
-                {/* Image Carousel */}
                 {venue.images.length > 0 && (
                     <ImageCarousel
                         images={venue.images}
@@ -136,19 +122,17 @@ export function VenueCard({ venue, carouselIndex, onCarouselChange, onImageClick
                     />
                 )}
 
-                {/* Location */}
                 <div className="venue-row">
                     <span className="venue-label">📍 الموقع</span>
                     <span className="venue-value">{venue.location}</span>
                 </div>
 
-                {/* Phones */}
                 {venue.phones.length > 0 && (
                     <div className="venue-row venue-row-phones">
                         <span className="venue-label">📞 التليفون</span>
                         <div className="phone-items-wrapper">
-                            {venue.phones.map((phone, i) => (
-                                <a key={i} href={`tel:${phone.number}`} className="phone-item">
+                            {venue.phones.map((phone) => (
+                                <a key={phone.number} href={`tel:${phone.number}`} className="phone-item">
                                     <span className="phone-number">{phone.number}</span>
                                     {phone.name && <span className="phone-contact">{phone.name}</span>}
                                 </a>
@@ -157,16 +141,15 @@ export function VenueCard({ venue, carouselIndex, onCarouselChange, onImageClick
                     </div>
                 )}
 
-                {/* Links */}
                 {venue.links.length > 0 && (
                     <div className="venue-row venue-row-links">
                         <span className="venue-label">🔗 اللينكات</span>
                         <div className="links-items-wrapper">
-                            {venue.links.map((link, i) => {
+                            {venue.links.map((link) => {
                                 const linkInfo = LINK_DISPLAY[link.type] || { icon: "🔗", text: "رابط" };
                                 return (
                                     <a
-                                        key={i}
+                                        key={link.url}
                                         href={link.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
@@ -180,23 +163,16 @@ export function VenueCard({ venue, carouselIndex, onCarouselChange, onImageClick
                     </div>
                 )}
 
-                {/* Price */}
-                {renderPriceBadges()}
+                <PriceSection pricing={venue.pricing} />
+                <CapacitySection capacity={venue.capacity} />
+                <AmenitiesSection amenities={venue.amenities} />
 
-                {/* Capacity */}
-                {renderCapacity()}
-
-                {/* Amenities */}
-                {renderAmenities()}
-
-                {/* Notes */}
                 {venue.notes && (
-                    <div className={`notes ${venue.notesType || ''}`}>
+                    <div className={`notes ${venue.notesType || ""}`}>
                         {venue.notes}
                     </div>
                 )}
 
-                {/* Details */}
                 {venue.details && (
                     <div className="details">
                         {venue.details}
@@ -205,4 +181,6 @@ export function VenueCard({ venue, carouselIndex, onCarouselChange, onImageClick
             </div>
         </div>
     );
-}
+});
+
+VenueCard.displayName = "VenueCard";

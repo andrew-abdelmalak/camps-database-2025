@@ -11,15 +11,33 @@ import type { CarouselState } from "@/types";
 
 const RESTORE_TTL_MS = 30 * 60 * 1000;
 
+function isCarouselState(value: unknown): value is CarouselState {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Object.values(value).every((item) => typeof item === "number")
+  );
+}
+
+function isStoredState(
+  value: unknown,
+): value is { timestamp: number; states?: CarouselState; y?: number } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { timestamp?: unknown }).timestamp === "number"
+  );
+}
+
 function readSavedCarouselStates(): CarouselState {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.carouselStates);
     if (!saved) return {};
 
-    const data = JSON.parse(saved) as { states?: CarouselState; timestamp?: number };
-    if (!data.timestamp || Date.now() - data.timestamp > RESTORE_TTL_MS) return {};
+    const data = JSON.parse(saved) as unknown;
+    if (!isStoredState(data) || Date.now() - data.timestamp > RESTORE_TTL_MS) return {};
 
-    return data.states ?? {};
+    return isCarouselState(data.states) ? data.states : {};
   } catch {
     return {};
   }
@@ -70,16 +88,19 @@ function App() {
   }, [handleCarouselChange]);
 
   useEffect(() => {
+    let restoreTimeoutId: number | null = null;
+
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.scrollPosition);
       if (saved) {
-        const data = JSON.parse(saved) as { y?: number; timestamp?: number };
+        const data = JSON.parse(saved) as unknown;
         if (
+          isStoredState(data) &&
           typeof data.y === "number" &&
-          data.timestamp &&
           Date.now() - data.timestamp < RESTORE_TTL_MS
         ) {
-          setTimeout(() => window.scrollTo({ top: data.y }), 100);
+          // Delay restore until after initial layout so the saved position is stable.
+          restoreTimeoutId = window.setTimeout(() => window.scrollTo({ top: data.y }), 100);
         }
       }
     } catch {
@@ -89,6 +110,7 @@ function App() {
     let ticking = false;
     const saveScrollPosition = () => {
       try {
+        // Keep only recent UI state; expired entries are ignored on the next visit.
         localStorage.setItem(STORAGE_KEYS.scrollPosition, JSON.stringify({
           y: window.scrollY,
           timestamp: Date.now(),
@@ -111,6 +133,9 @@ function App() {
     window.addEventListener("beforeunload", saveScrollPosition);
 
     return () => {
+      if (restoreTimeoutId !== null) {
+        window.clearTimeout(restoreTimeoutId);
+      }
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("beforeunload", saveScrollPosition);
     };

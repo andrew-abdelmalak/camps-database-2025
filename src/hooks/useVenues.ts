@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
-import venuesData from "@/data/venues.json";
 import type { Venue, TabType, SortBy } from "@/types";
+import { venues } from "@/data/venues";
 
 const MIN_SEARCH_LENGTH = 2;
 
@@ -15,32 +15,13 @@ const matchesPublishedSearch = (venue: Venue, query: string): boolean => (
 export function useVenues() {
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState<TabType>("favorites");
-    const [sortBy] = useState<SortBy>("sortOrder");
+    const sortBy: SortBy = "sortOrder";
 
-    // Cast JSON data to Venue type
-    const venues = venuesData as Venue[];
-
-    // Sort venues by selected criteria
+    // Stage 1 parity keeps the published custom order fixed.
     const sortedVenues = useMemo(() => {
         const list = [...venues];
-
-        switch (sortBy) {
-            case "sortOrder":
-                return list.sort((a, b) => a.sortOrder - b.sortOrder);
-            case "name":
-                return list.sort((a, b) => a.name.localeCompare(b.name, "ar"));
-            case "location":
-                return list.sort((a, b) => a.location.localeCompare(b.location, "ar"));
-            case "price":
-                return list.sort((a, b) => {
-                    const priceA = a.pricing?.camping?.amount ?? Infinity;
-                    const priceB = b.pricing?.camping?.amount ?? Infinity;
-                    return priceA - priceB;
-                });
-            default:
-                return list;
-        }
-    }, [venues, sortBy]);
+        return list.sort((a, b) => a.sortOrder - b.sortOrder);
+    }, []);
 
     // Filter by tab
     const tabFilteredVenues = useMemo(() => {
@@ -88,7 +69,7 @@ export function useVenues() {
             if (currentTabMatches.length === 0 && allMatches.length > 0) {
                 const targetTab = getTabForVenue(allMatches[0]);
                 if (targetTab !== activeTab) {
-                    setTimeout(() => setActiveTab(targetTab), 500);
+                    setActiveTab(targetTab);
                 }
             }
         }

@@ -25,6 +25,7 @@ export interface Pricing {
     camping?: PriceInfo;
     rooms?: PriceInfo;
     kitchen?: PriceInfo;
+    meals?: PriceInfo;
     dayUse?: Omit<PriceInfo, "period"> & { period?: PriceInfo["period"] };
 }
 
@@ -87,7 +88,7 @@ export interface Venue {
     capacity: Capacity | null;
     amenities: Amenities;
     notes: string | null;
-    notesType: "warning" | "info" | "";
+    notesType: "warning" | "info" | "success" | "";
     details: string | null;
     images: string[];
     availability: Availability;    // Sparse - only actual bookings (Issue #3 fix)
@@ -98,14 +99,12 @@ export type TabType = "favorites" | "rest";
 
 // Sort options
 export type SortBy = "sortOrder" | "name" | "location" | "price";
-export type SortDirection = "asc" | "desc";
 
 // Filter state
 export interface FilterState {
     search: string;
     tab: TabType;
     sortBy: SortBy;
-    sortDirection: SortDirection;
     locations: string[];
 }
 

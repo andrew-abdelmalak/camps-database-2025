@@ -1,5 +1,11 @@
 import { siteConfig } from "@/config/site.config";
 
+const LAST_UPDATED_LABEL = new Date().toLocaleDateString("ar-EG", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+});
+
 interface HeaderProps {
     venueCount: number;
     searchQuery: string;
@@ -35,20 +41,13 @@ export function Header({ venueCount, searchQuery, onSearchChange, children }: He
 }
 
 export function Footer() {
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('ar-EG', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-
     return (
         <footer className="footer">
             <p>{siteConfig.committeeName} {siteConfig.year} ⛺</p>
             <p>{siteConfig.sortingDescription}</p>
             <div className="last-updated">
                 <span>🔄</span>
-                <span>آخر تحديث: {dateStr}</span>
+                <span>آخر تحديث: {LAST_UPDATED_LABEL}</span>
             </div>
         </footer>
     );

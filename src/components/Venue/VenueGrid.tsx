@@ -1,7 +1,7 @@
-import { useMemo, useEffect, useState } from "react";
+import { useMemo } from "react";
 import type { Venue } from "@/types";
-import { VenueCard } from "./VenueCard";
-import { getColumnCount } from "@/config/layout.config";
+import { VenueCard } from "@/components/Venue/VenueCard";
+import { useColumnCount } from "@/hooks/useColumnCount";
 
 interface VenueGridProps {
     venues: Venue[];
@@ -11,23 +11,7 @@ interface VenueGridProps {
 }
 
 export function VenueGrid({ venues, carouselStates, onCarouselChange, onImageClick }: VenueGridProps) {
-    const [columnCount, setColumnCount] = useState(() => getColumnCount(window.innerWidth));
-
-    // Update column count on resize
-    useEffect(() => {
-        let lastWidth = window.innerWidth;
-
-        const handleResize = () => {
-            // Only update if width changed (ignore mobile address bar toggle)
-            if (window.innerWidth !== lastWidth) {
-                lastWidth = window.innerWidth;
-                setColumnCount(getColumnCount(window.innerWidth));
-            }
-        };
-
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
-    }, []);
+    const columnCount = useColumnCount();
 
     // Distribute venues into columns (balanced masonry)
     const columns = useMemo(() => {
